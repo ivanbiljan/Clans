@@ -194,7 +194,7 @@ namespace Clans.Database
             }
 
             _connection.Query(
-                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2 AND IsFriendlyFire = @3 WHERE Clan = @4",
+                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, IsFriendlyFire = @3 WHERE Clan = @4",
                 clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0, clan.Name);
             _connection.Query("DELETE FROM ClanRanks WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRankHasPermission WHERE Clan = @0", clan.Name);

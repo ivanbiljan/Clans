@@ -218,11 +218,7 @@ namespace Clans
             switch (parameters[0].ToLowerInvariant())
             {
                 case "accept":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
+                {
                     if (playerMetadata != null)
                     {
                         player.SendErrorMessage("You are already in a clan!");
@@ -234,25 +230,15 @@ namespace Clans
                         return;
                     }
 
-                    playerMetadata = new PlayerMetadata(invitationData, ClanRank.DefaultRank);
-                    _memberManager.Add(invitationData, ClanRank.DefaultRank, player.User.Name);
+                    var metadata = _memberManager.Add(invitationData, ClanRank.DefaultRank, player.User.Name);
                     player.RemoveData(InvitationKey);
-                    player.SetData(DataKey, playerMetadata);
-                    player.SendSuccessMessage($"You have joined clan '{playerMetadata.Clan.Name}'!");
-                    playerMetadata.Clan.SendMessage($"{player.User.Name} has joined the clan!", player.Index);
+                    player.SetData(DataKey, metadata);
+                    player.SendSuccessMessage($"You have joined clan '{metadata.Clan.Name}'!");
+                    metadata.Clan.SendMessage($"(Clan) {player.User.Name} has joined the clan!", player.Index);
+                }
                     break;
                 case "color":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
-                    if (parameters.Count != 2)
-                    {
-                        player.SendErrorMessage(
-                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan color <rrr,ggg,bbb>");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -261,6 +247,12 @@ namespace Clans
                     if (!playerMetadata.Rank.HasPermission(ClanPermissions.SetClanChatColor))
                     {
                         player.SendErrorMessage("You do not have permission to change the clan's chat color.");
+                        return;
+                    }
+                    if (parameters.Count != 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan color <rrr,ggg,bbb>");
                         return;
                     }
 
@@ -275,8 +267,10 @@ namespace Clans
                     playerMetadata.Clan.ChatColor = parameters[1];
                     _clanManager.Update(playerMetadata.Clan);
                     player.SendSuccessMessage($"Set clan chat color to '{parameters[1]}'.");
+                }
                     break;
                 case "create":
+                {
                     if (!player.IsLoggedIn)
                     {
                         player.SendErrorMessage("You must be logged in to do that.");
@@ -287,15 +281,15 @@ namespace Clans
                         player.SendErrorMessage("You do not have permission to create clans.");
                         return;
                     }
+                    if (playerMetadata != null)
+                    {
+                        player.SendErrorMessage("You are already in a clan!");
+                        return;
+                    }
                     if (parameters.Count < 2)
                     {
                         player.SendErrorMessage(
                             $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan create <clan name>");
-                        return;
-                    }
-                    if (playerMetadata != null)
-                    {
-                        player.SendErrorMessage("You are already in a clan!");
                         return;
                     }
 
@@ -309,22 +303,19 @@ namespace Clans
                     }
 
                     clan = new Clan(clanName, player.User.Name);
+                    var metadata = _memberManager.Add(clan, ClanRank.OwnerRank, player.User.Name);
                     _clanManager.Add(clanName, player.User.Name);
-                    _memberManager.Add(clan, ClanRank.OwnerRank, player.User.Name);
-                    player.SetData(DataKey, new PlayerMetadata(clan, ClanRank.OwnerRank));
+                    player.SetData(DataKey, metadata);
                     player.SendSuccessMessage($"Successfully created clan '{clanName}'.");
                     if (!e.Silent)
                     {
                         TSPlayer.All.SendInfoMessage($"Clan '{clanName}' has been established!");
                     }
+                }
                     break;
                 case "deny":
                 case "decline":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
+                {
                     if (playerMetadata != null)
                     {
                         player.SendErrorMessage("You are already in a clan!");
@@ -338,13 +329,10 @@ namespace Clans
 
                     player.RemoveData(InvitationKey);
                     player.SendSuccessMessage("You have declined the invitation.");
+                }
                     break;
                 case "disband":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
+                {
                     if (!player.HasPermission(ClanPermissions.CreatePermission))
                     {
                         player.SendErrorMessage("You do not have permission to create clans.");
@@ -370,11 +358,14 @@ namespace Clans
                     foreach (var player2 in players)
                     {
                         player2.RemoveData(DataKey);
+                        _memberManager.Remove(player2.User.Name);
                     }
 
                     TSPlayer.All.SendInfoMessage($"Clan '{playerMetadata.Clan.Name}' has been disbanded!");
+                }
                     break;
                 case "help":
+                {
                     if (!PaginationTools.TryParsePageNumber(parameters, 1, player, out pageNumber))
                     {
                         player.SendErrorMessage("Invalid page number!");
@@ -403,19 +394,10 @@ namespace Clans
                         HeaderFormat = "Clan Sub-commands ({0}/{1})",
                         FooterFormat = $"Type {TShock.Config.CommandSpecifier}clan help {{0}} for more."
                     });
+                }
                     break;
                 case "invite":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
-                    if (parameters.Count < 2)
-                    {
-                        player.SendErrorMessage(
-                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan invite <player name>");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -424,6 +406,12 @@ namespace Clans
                     if (!playerMetadata.Rank.HasPermission(ClanPermissions.InvitePlayers))
                     {
                         player.SendErrorMessage("You do not have permission to invite players.");
+                        return;
+                    }
+                    if (parameters.Count < 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan invite <player name>");
                         return;
                     }
 
@@ -465,19 +453,10 @@ namespace Clans
                     match.SendInfoMessage(
                         $"Type {TShock.Config.CommandSpecifier}clan decline to decline the invitation.");
                     player.SendSuccessMessage($"'{match.Name}' has been invited to join your clan!");
+                }
                     break;
                 case "kick":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
-                    if (parameters.Count < 2)
-                    {
-                        player.SendErrorMessage(
-                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan kick <player name>");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -486,6 +465,12 @@ namespace Clans
                     if (!playerMetadata.Rank.HasPermission(ClanPermissions.KickMembers))
                     {
                         player.SendErrorMessage("You do not have permission to kick members!");
+                        return;
+                    }
+                    if (parameters.Count < 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan kick <player name>");
                         return;
                     }
 
@@ -516,10 +501,12 @@ namespace Clans
                     }
 
                     _memberManager.Remove(user.Name);
-                    TShock.Players.Single(p => p?.User == user)?.RemoveData(DataKey);
+                    TShock.Players.Single(p => p?.User.Name == user.Name)?.RemoveData(DataKey);
                     player.SendSuccessMessage($"'{user.Name}' has been kicked from the clan!");
+                }
                     break;
                 case "list":
+                {
                     if (!PaginationTools.TryParsePageNumber(parameters, 1, player, out pageNumber))
                     {
                         player.SendErrorMessage("Invalid page number!");
@@ -533,13 +520,10 @@ namespace Clans
                         FooterFormat = $"Type {TShock.Config.CommandSpecifier}clan list {{0}} for more.",
                         NothingToDisplayString = "There are no clans to list."
                     });
+                }
                     break;
                 case "members":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -557,13 +541,10 @@ namespace Clans
                         HeaderFormat = "Clan Members ({0}/{1})",
                         FooterFormat = $"Type {TShock.Config.CommandSpecifier}clan members {{0}} for more."
                     });
+                }
                     break;
                 case "motd":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -571,6 +552,12 @@ namespace Clans
                     }
                     if (parameters.Count < 2)
                     {
+                        if (string.IsNullOrWhiteSpace(playerMetadata.Clan.Motd))
+                        {
+                            player.SendErrorMessage("Your clan does not have a message of the day set.");
+                            return;
+                        }
+
                         player.SendInfoMessage("The clan's message of the day is:");
                         player.SendMessage(playerMetadata.Clan.Motd, playerMetadata.Clan.ChatColor.GetColor());
                     }
@@ -583,18 +570,9 @@ namespace Clans
                         player.SendSuccessMessage($"The clan's message of the day has been set to '{newMotd}'.");
                     }
                     break;
+                }
                 case "prefix":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
-                    if (parameters.Count < 2)
-                    {
-                        player.SendErrorMessage(
-                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan prefix <prefix>");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -605,25 +583,22 @@ namespace Clans
                         player.SendErrorMessage("You do not have permission to change the clan's prefix.");
                         return;
                     }
+                    if (parameters.Count < 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan prefix <prefix>");
+                        return;
+                    }
 
                     parameters.RemoveAt(0);
                     var prefix = string.Join(" ", parameters);
                     playerMetadata.Clan.Prefix = prefix;
                     _clanManager.Update(playerMetadata.Clan);
                     player.SendSuccessMessage($"Set clan prefix to '{prefix}'.");
+                }
                     break;
                 case "setrank":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
-                    if (parameters.Count != 3)
-                    {
-                        player.SendErrorMessage(
-                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan setrank <player name> <rank>");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -634,13 +609,19 @@ namespace Clans
                         player.SendErrorMessage("You do not have permission to modify ranks!");
                         return;
                     }
+                    if (parameters.Count != 3)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan setrank <player name> <rank>");
+                        return;
+                    }
 
                     var rankName = e.Parameters[2];
                     var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
-                    username = e.Parameters[1];
-                    users = TShock.Users.GetUsersByName(username);
-                    user = users[0];
-                    userMetadata = _memberManager.GetPlayerMetadata(user.Name);
+                    var username = e.Parameters[1];
+                    var users = TShock.Users.GetUsersByName(username);
+                    var user = users[0];
+                    var userMetadata = _memberManager.GetPlayerMetadata(user.Name);
                     if (users.Count == 0)
                     {
                         player.SendErrorMessage("Invalid player!");
@@ -665,14 +646,11 @@ namespace Clans
                     userMetadata.Rank = rank;
                     _memberManager.Update(user.Name, rank.Name);
                     player.SendSuccessMessage($"Set {user.Name}'s rank to '{rank.Name}'.");
+                }
                     break;
                 case "quit":
                 case "leave":
-                    if (!player.IsLoggedIn)
-                    {
-                        player.SendErrorMessage("You must be logged in to do that.");
-                        return;
-                    }
+                {
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -685,6 +663,7 @@ namespace Clans
 
                     player.RemoveData(DataKey);
                     player.SendSuccessMessage("You have left the clan!");
+                }
                     break;
             }
         }

@@ -45,12 +45,14 @@ namespace Clans.Database
         }
 
         /// <summary>
-        ///     Adds a database record with the specified clan, clan rank and username.
+        ///     Creates a new <see cref="PlayerMetadata" /> object from the specified clan, rank and username and adds it to the
+        ///     database.
         /// </summary>
         /// <param name="clan">The clan, which must not be <c>null</c>.</param>
-        /// <param name="rank">The player's rank, which must not be <c>null</c>.</param>
-        /// <param name="username">The player's username, which must not be <c>null</c>.</param>
-        public void Add([NotNull] Clan clan, [NotNull] ClanRank rank, [NotNull] string username)
+        /// <param name="rank">The rank, which must not be <c>null</c>.</param>
+        /// <param name="username">The username, which must not be <c>null</c>.</param>
+        /// <returns>The metadata.</returns>
+        public PlayerMetadata Add([NotNull] Clan clan, [NotNull] ClanRank rank, [NotNull] string username)
         {
             if (clan == null)
             {
@@ -67,10 +69,13 @@ namespace Clans.Database
 
             lock (_syncLock)
             {
+                var metadata = new PlayerMetadata(clan, rank);
+
                 clan.Members.Add(username);
-                _metadataCache.Add(username, new PlayerMetadata(clan, rank));
+                _metadataCache.Add(username, metadata);
                 _connection.Query("INSERT INTO ClanMembers (Clan, Rank, Username) VALUES (@0, @1, @2)", clan.Name,
                     rank.Name, username);
+                return metadata;
             }
         }
 
