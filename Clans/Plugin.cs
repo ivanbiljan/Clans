@@ -138,7 +138,7 @@ namespace Clans
             if (!TShock.Config.EnableChatAboveHeads)
             {
                 var message = string.Format(ClansConfig.Instance.ChatFormat, player.Name, player.Group.Prefix,
-                    player.Group.Suffix, playerMetadata.Clan.Name, e.Text);
+                    player.Group.Suffix, playerMetadata.Clan.Prefix, e.Text);
                 TSPlayer.All.SendMessage(message, chatColor);
                 TSPlayer.Server.SendMessage(message, chatColor);
                 TShock.Log.Info($"Broadcast: {message}");
@@ -705,6 +705,8 @@ namespace Clans
                     $"{TShock.Config.CommandSpecifier}clanrank addperm <rank name> <permissions...>");
                 player.SendErrorMessage(
                     $"{TShock.Config.CommandSpecifier}clanrank delperm <rank name> <permissions...>");
+                player.SendErrorMessage($"{TShock.Config.CommandSpecifier}clanrank permissions [rank name]");
+                player.SendErrorMessage($"{TShock.Config.CommandSpecifier}clanrank list");
                 return;
             }
             if (playerMetadata == null)
@@ -819,6 +821,26 @@ namespace Clans
             else if (command.Equals("list", StringComparison.OrdinalIgnoreCase))
             {
                 player.SendInfoMessage($"Ranks: {string.Join(", ", playerMetadata.Clan.Ranks.Select(r => r.Name))}");
+            }
+            else if (command.Equals("permissions", StringComparison.OrdinalIgnoreCase))
+            {
+                if (parameters.Count < 1)
+                {
+                    player.SendErrorMessage(
+                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clanrank permissions <rank name>");
+                    return;
+                }
+
+                var rankName = string.Join(" ", parameters);
+                var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
+                if (rank == null)
+                {
+                    player.SendErrorMessage($"Rank '{rankName}' does not exist.");
+                    return;
+                }
+
+                player.SendSuccessMessage($"Permissions for rank '{rankName}':");
+                player.SendInfoMessage(string.Join(", ", rank.Permissions));
             }
         }
 

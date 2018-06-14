@@ -45,7 +45,7 @@ namespace Clans.Database
         }
 
         /// <summary>
-        ///     Adds a new database entry.
+        ///     Adds a database record with the specified clan, clan rank and username.
         /// </summary>
         /// <param name="clan">The clan, which must not be <c>null</c>.</param>
         /// <param name="rank">The player's rank, which must not be <c>null</c>.</param>
@@ -128,7 +128,7 @@ namespace Clans.Database
         }
 
         /// <summary>
-        ///     Removes the specified player database entry.
+        ///     Removes a player's information from the database.
         /// </summary>
         /// <param name="username">The player's username, which must not be <c>null</c>.</param>
         public void Remove([NotNull] string username)
@@ -146,7 +146,7 @@ namespace Clans.Database
         }
 
         /// <summary>
-        ///     Updates a player's rank.
+        ///     Updates a player's database information.
         /// </summary>
         /// <param name="username">The player's account name, which must not be <c>null</c>.</param>
         /// <param name="rankName">The rank name, which must not be <c>null</c>.</param>

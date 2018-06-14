@@ -203,32 +203,22 @@ namespace Clans.Database
                 dbConnection.Open();
                 using (var transaction = dbConnection.BeginTransaction())
                 {
-                    using (var command = (SqliteCommand) dbConnection.CreateCommand())
+                    foreach (var rank in clan.Ranks)
                     {
-                        command.CommandText = "INSERT INTO ClanRanks (Clan, Rank, Tag) VALUES (@0, @1, @2)";
-                        command.AddParameter("@0", clan.Name);
-                        command.AddParameter("@1", null);
-                        command.AddParameter("@2", null);
-
-                        foreach (var rank in clan.Ranks)
+                        using (var command = (SqliteCommand) dbConnection.CreateCommand())
                         {
-                            command.Parameters["@1"].Value = rank.Name;
-                            command.Parameters["@2"].Value = rank.Tag;
+                            command.CommandText = "INSERT INTO ClanRanks (Clan, Rank, Tag) VALUES (@0, @1, @2)";
+                            command.AddParameter("@0", clan.Name);
+                            command.AddParameter("@1", rank.Name);
+                            command.AddParameter("@2", rank.Tag);
                             command.ExecuteNonQuery();
 
-                            using (var command2 = (SqliteCommand) dbConnection.CreateCommand())
+                            foreach (var permission in rank.Permissions)
                             {
-                                command2.CommandText =
+                                command.CommandText =
                                     "INSERT INTO ClanRankHasPermission (Clan, Rank, Permission) VALUES (@0, @1, @2)";
-                                command2.AddParameter("@0", clan.Name);
-                                command2.AddParameter("@1", rank.Name);
-                                command2.AddParameter("@2", null);
-
-                                foreach (var permission in rank.Permissions)
-                                {
-                                    command2.Parameters["@2"].Value = permission;
-                                    command2.ExecuteNonQuery();
-                                }
+                                command.Parameters["@2"].Value = permission;
+                                command.ExecuteNonQuery();
                             }
                         }
                     }
