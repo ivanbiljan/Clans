@@ -31,7 +31,8 @@ namespace Clans.Database
                               "Prefix TEXT, " +
                               "ChatColor TEXT, " +
                               "Motd TEXT, " +
-                              "IsFriendlyFire INTEGER)");
+                              "IsFriendlyFire INTEGER, " +
+                              "UNIQUE(Clan) ON CONFLICT REPLACE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanRanks (" +
                               "Clan TEXT, " +
                               "Rank TEXT, " +

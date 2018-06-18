@@ -9,10 +9,10 @@ namespace Clans
     {
         /// <summary>
         ///     Gets the in-game chat format.
-        ///     {0} = player name, {1} = group prefix, {2} = group suffix,
-        ///     {3} = clan prefix, {4} = message
+        ///     {0} = player name, {1} = group name, {2} = group prefix,
+        ///     {3} = group suffix, {4} = clan prefix, {5} = message
         /// </summary>
-        public string ChatFormat { get; } = "({3}) {0}: {4}";
+        public string ChatFormat { get; } = "({4}) {0}: {5}";
 
         /// <summary>
         ///     Gets the clan chat format.

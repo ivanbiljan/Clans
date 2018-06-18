@@ -137,8 +137,8 @@ namespace Clans
             var chatColor = playerMetadata.Clan.ChatColor.GetColor();
             if (!TShock.Config.EnableChatAboveHeads)
             {
-                var message = string.Format(ClansConfig.Instance.ChatFormat, player.Name, player.Group.Prefix,
-                    player.Group.Suffix, playerMetadata.Clan.Prefix, e.Text);
+                var message = string.Format(ClansConfig.Instance.ChatFormat, player.Name, player.Group.Name,
+                    player.Group.Prefix, player.Group.Suffix, playerMetadata.Clan.Prefix, e.Text);
                 TSPlayer.All.SendMessage(message, chatColor);
                 TSPlayer.Server.SendMessage(message, chatColor);
                 TShock.Log.Info($"Broadcast: {message}");
@@ -333,11 +333,6 @@ namespace Clans
                     break;
                 case "disband":
                 {
-                    if (!player.HasPermission(ClanPermissions.CreatePermission))
-                    {
-                        player.SendErrorMessage("You do not have permission to create clans.");
-                        return;
-                    }
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
@@ -418,6 +413,7 @@ namespace Clans
                     parameters.RemoveAt(0);
                     var playerName = string.Join(" ", parameters);
                     var matches = TShock.Utils.FindPlayer(playerName);
+                    var match = matches[0];
                     if (matches.Count == 0)
                     {
                         player.SendErrorMessage("Invalid player!");
@@ -428,8 +424,6 @@ namespace Clans
                         TShock.Utils.SendMultipleMatchError(player, matches.Select(p => p.Name));
                         return;
                     }
-
-                    var match = matches[0];
                     if (!match.IsLoggedIn)
                     {
                         player.SendErrorMessage("The player is not logged in.");
@@ -563,6 +557,13 @@ namespace Clans
                     }
                     else
                     {
+                        if (!playerMetadata.Rank.HasPermission(ClanPermissions.SetClanMotd))
+                        {
+                            player.SendErrorMessage(
+                                "You do not have permission to change the clan's message of the day!");
+                            return;
+                        }
+
                         parameters.RemoveAt(0);
                         var newMotd = string.Join(" ", parameters);
                         playerMetadata.Clan.Motd = newMotd;
@@ -665,6 +666,10 @@ namespace Clans
                     player.SendSuccessMessage("You have left the clan!");
                 }
                     break;
+                default:
+                    player.SendErrorMessage(
+                        $"Invalid sub-command! Type {TShock.Config.CommandSpecifier}clan help for a list of valid commands.");
+                    break;
             }
         }
 
@@ -721,6 +726,28 @@ namespace Clans
                 _clanManager.Update(playerMetadata.Clan);
                 player.SendSuccessMessage($"Successfully created new rank '{rankName}'!");
             }
+            else if (command.Equals("addperm", StringComparison.OrdinalIgnoreCase))
+            {
+                if (parameters.Count < 1)
+                {
+                    player.SendErrorMessage(
+                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clanrank addperm <rank name> <permissions>");
+                    return;
+                }
+
+                var rankName = parameters[0];
+                var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
+                if (rank == null)
+                {
+                    player.SendErrorMessage($"Rank '{rankName}' does not exist.");
+                    return;
+                }
+
+                parameters.RemoveAt(0);
+                parameters.ForEach(p => rank.Permissions.Add(p));
+                _clanManager.Update(playerMetadata.Clan);
+                player.SendSuccessMessage($"Rank '{rankName}' has been modified successfully.");
+            }
             else if (command.Equals("del", StringComparison.OrdinalIgnoreCase))
             {
                 if (parameters.Count < 1)
@@ -753,28 +780,6 @@ namespace Clans
                 _clanManager.Update(playerMetadata.Clan);
                 player.SendSuccessMessage($"Successfully removed rank '{rankName}'!");
             }
-            else if (command.Equals("addperm", StringComparison.OrdinalIgnoreCase))
-            {
-                if (parameters.Count < 1)
-                {
-                    player.SendErrorMessage(
-                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clanrank addperm <rank name> <permissions>");
-                    return;
-                }
-
-                var rankName = parameters[0];
-                var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
-                if (rank == null)
-                {
-                    player.SendErrorMessage($"Rank '{rankName}' does not exist.");
-                    return;
-                }
-
-                parameters.RemoveAt(0);
-                parameters.ForEach(p => rank.Permissions.Add(p));
-                _clanManager.Update(playerMetadata.Clan);
-                player.SendSuccessMessage($"Rank '{rankName}' has been modified successfully.");
-            }
             else if (command.Equals("delperm", StringComparison.OrdinalIgnoreCase))
             {
                 if (parameters.Count < 1)
@@ -799,7 +804,8 @@ namespace Clans
             }
             else if (command.Equals("list", StringComparison.OrdinalIgnoreCase))
             {
-                player.SendInfoMessage($"Ranks: {string.Join(", ", playerMetadata.Clan.Ranks.Select(r => r.Name))}");
+                var ranks = string.Join(", ", playerMetadata.Clan.Ranks.Select(r => r.Name));
+                player.SendInfoMessage($"Ranks: {(ranks.Length > 0 ? ranks : "none")}");
             }
             else if (command.Equals("permissions", StringComparison.OrdinalIgnoreCase))
             {
@@ -820,6 +826,27 @@ namespace Clans
 
                 player.SendSuccessMessage($"Permissions for rank '{rankName}':");
                 player.SendInfoMessage(string.Join(", ", rank.Permissions));
+            }
+            else if (command.Equals("tag", StringComparison.OrdinalIgnoreCase))
+            {
+                if (parameters.Count < 2)
+                {
+                    player.SendErrorMessage(
+                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clanrank tag <rank name> <tag>");
+                    return;
+                }
+
+                var rankName = parameters[0];
+                var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
+                if (rank == null)
+                {
+                    player.SendErrorMessage($"Rank '{rankName}' does not exist.");
+                    return;
+                }
+
+                parameters.RemoveAt(0);
+                rank.Tag = string.Join(" ", parameters);
+                player.SendSuccessMessage($"Rank '{rankName}' has been modified successfully.");
             }
         }
 

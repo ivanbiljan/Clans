@@ -46,6 +46,12 @@
         public static readonly string SetClanChatColor = "clans.ranks.setcolor";
 
         /// <summary>
+        ///     The permissions required for chaning the clan's message of the day.
+        /// </summary>
+        /// <remarks>This permission applies to clan ranks only.</remarks>
+        public static readonly string SetClanMotd = "clans.ranks.setmotd";
+
+        /// <summary>
         ///     The permission required for changing clan prefixes.
         /// </summary>
         /// <remarks>This permission aplies to clan ranks only.</remarks>
