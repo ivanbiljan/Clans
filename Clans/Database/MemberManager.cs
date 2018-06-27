@@ -85,7 +85,7 @@ namespace Clans.Database
         /// <param name="username">The username, which must not be <c>null</c>.</param>
         /// <returns>The player metadata, or <c>null</c> if no match is found.</returns>
         [CanBeNull]
-        public PlayerMetadata GetPlayerMetadata([NotNull] string username)
+        public PlayerMetadata Get([NotNull] string username)
         {
             if (username == null)
             {

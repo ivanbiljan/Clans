@@ -63,7 +63,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ClanPermissions.cs" />
+    <Compile Include="ClansPermissions.cs" />
     <Compile Include="ClansConfig.cs" />
     <Compile Include="Commands\CommandAttribute.cs" />
     <Compile Include="Commands\CommandRegistry.cs" />

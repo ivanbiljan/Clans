@@ -71,7 +71,7 @@ namespace Clans.Database
         /// </summary>
         /// <param name="message">The message.</param>
         /// <param name="ignoreIndexes">
-        ///     A collection of player indexes that specifies which players should not receive the message.
+        ///     A collection of player indices that specifies which players should not receive the message.
         /// </param>
         public void SendMessage(string message, params int[] ignoreIndexes)
         {

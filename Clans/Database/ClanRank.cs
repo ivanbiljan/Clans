@@ -14,7 +14,7 @@ namespace Clans.Database
         /// </summary>
         public static ClanRank DefaultRank = new ClanRank("Default")
         {
-            Permissions = {ClanPermissions.SendClanMessages}
+            Permissions = {ClansPermissions.SendClanMessages}
         };
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace Clans.Database
         public ClanRank([NotNull] string name, string tag = null)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
-            Permissions = new List<string> {ClanPermissions.SendClanMessages};
+            Permissions = new List<string> {ClansPermissions.SendClanMessages};
             Tag = tag ?? name;
         }
 
@@ -54,7 +54,7 @@ namespace Clans.Database
         public string Tag { get; set; }
 
         /// <summary>
-        ///     Determines whether the rank has a permission.
+        ///     Determines if the rank has a permission.
         /// </summary>
         /// <param name="permission">The permission.</param>
         /// <returns><c>true</c> if the rank has the permission; otherwise, <c>false</c>.</returns>

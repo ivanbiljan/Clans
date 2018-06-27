@@ -58,7 +58,8 @@ namespace Clans.Database
         /// </summary>
         /// <param name="name">The clan's name, which must not be <c>null</c>.</param>
         /// <param name="owner">The clan's owner, which must not be <c>null</c>.</param>
-        public void Add([NotNull] string name, [NotNull] string owner)
+        /// <returns>The clan.</returns>
+        public Clan Add([NotNull] string name, [NotNull] string owner)
         {
             if (name == null)
             {
@@ -76,6 +77,7 @@ namespace Clans.Database
                 _connection.Query(
                     "INSERT INTO Clans (Clan, Owner, Prefix, ChatColor, Motd, IsFriendlyFire) VALUES (@0, @1, @2, @3, @4, @5)",
                     clan.Name, clan.Owner, clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0);
+                return clan;
             }
         }
 

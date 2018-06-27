@@ -3,7 +3,7 @@
     /// <summary>
     ///     Holds clan permissions.
     /// </summary>
-    public static class ClanPermissions
+    public static class ClansPermissions
     {
         /// <summary>
         ///     The permission required for creating clans.
@@ -62,5 +62,11 @@
         /// </summary>
         /// <remarks>This permission applies to clan ranks only.</remarks>
         public static readonly string SetMemberRank = "clans.ranks.setrank";
+
+        /// <summary>
+        ///     The permission required for toggling a clan's friendly fire status.
+        /// </summary>
+        /// <remarks>This permission applies to clan ranks only.</remarks>
+        public static readonly string ToggleFriendlyFire = "clans.ranks.togglefriendlyfire";
     }
 }

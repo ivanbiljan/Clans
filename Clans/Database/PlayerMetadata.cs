@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace Clans.Database
 {
     /// <summary>
-    ///     Extends the <see cref="TShockAPI.TSPlayer"/> type.
+    ///     Holds player information.
     /// </summary>
     public sealed class PlayerMetadata
     {
@@ -20,13 +20,13 @@ namespace Clans.Database
         }
 
         /// <summary>
-        ///     Gets the player's clan.
+        ///     Gets the clan.
         /// </summary>
         [NotNull]
         public Clan Clan { get; }
 
         /// <summary>
-        ///     Gets or sets the player's clan rank.
+        ///     Gets or sets the clan rank.
         /// </summary>
         [NotNull]
         public ClanRank Rank { get; set; }
