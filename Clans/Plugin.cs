@@ -10,7 +10,6 @@ using JetBrains.Annotations;
 using Mono.Data.Sqlite;
 using Newtonsoft.Json;
 using Terraria;
-using Terraria.DataStructures;
 using Terraria.GameContent.NetModules;
 using Terraria.Localization;
 using Terraria.Net;
@@ -100,18 +99,13 @@ namespace Clans
         private static void OnNetSendBytes(SendBytesEventArgs e)
         {
             var packetType = e.Buffer[2];
-            var player = TShock.Players[e.Socket.Id];
-            if (e.Handled)
-            {
-                return;
-            }
-            if (packetType != (int)PacketTypes.PlayerHurtV2)
+            if (e.Handled && packetType == (int) PacketTypes.PlayerHurtV2)
             {
                 return;
             }
 
-            var playerMetadata = player?.GetData<PlayerMetadata>(DataKey);
-            if (playerMetadata == null)
+            var playerMetadata = TShock.Players[e.Socket.Id]?.GetData<PlayerMetadata>(DataKey);
+            if (playerMetadata == null || playerMetadata.Clan.IsFriendlyFire)
             {
                 return;
             }
@@ -134,10 +128,6 @@ namespace Clans
                 {
                     return;
                 }
-                if (dealerMetadata.Clan.IsFriendlyFire)
-                {
-                    return;
-                }
 
                 using (var writer = new BinaryWriter(new MemoryStream(e.Buffer, 3, e.Count - 3)))
                 {
@@ -153,12 +143,11 @@ namespace Clans
         private static void OnReload(ReloadEventArgs e)
         {
             ClansConfig.Instance = JsonConvert.DeserializeObject<ClansConfig>(File.ReadAllText(ConfigPath));
+            e.Player.SendSuccessMessage("Clans configuration file reloaded!");
         }
 
         private static void OnServerChat(ServerChatEventArgs e)
         {
-            var player = TShock.Players[e.Who];
-            var playerMetadata = player?.GetData<PlayerMetadata>(DataKey);
             if (e.Handled)
             {
                 return;
@@ -167,20 +156,19 @@ namespace Clans
             {
                 return;
             }
-            if (player == null)
+            if (e.Text.StartsWith(TShock.Config.CommandSpecifier) ||
+                e.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
             {
                 return;
             }
-            if (!player.HasPermission(Permissions.canchat) || player.mute)
-            {
-                return;
-            }
+
+            var player = TShock.Players[e.Who];
+            var playerMetadata = player?.GetData<PlayerMetadata>(DataKey);
             if (playerMetadata == null)
             {
                 return;
             }
-            if (e.Text.StartsWith(TShock.Config.CommandSpecifier) ||
-                e.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
+            if (!player.HasPermission(Permissions.canchat) || player.mute)
             {
                 return;
             }
@@ -317,7 +305,7 @@ namespace Clans
 
                     playerMetadata.Clan.ChatColor = parameters[1];
                     _clanManager.Update(playerMetadata.Clan);
-                    player.SendSuccessMessage($"Set clan chat color to '{parameters[1]}'.");
+                    player.SendInfoMessage($"Set clan chat color to '{parameters[1]}'.");
                 }
                     break;
                 case "create":
@@ -356,7 +344,7 @@ namespace Clans
                     clan = _clanManager.Add(clanName, player.User.Name);
                     var metadata = _memberManager.Add(clan, ClanRank.OwnerRank, player.User.Name);
                     player.SetData(DataKey, metadata);
-                    player.SendSuccessMessage($"Successfully created clan '{clanName}'.");
+                    player.SendInfoMessage($"You have created clan '{clanName}'.");
                     if (!e.Silent)
                     {
                         TSPlayer.All.SendInfoMessage($"Clan '{clanName}' has been established!");
@@ -415,19 +403,19 @@ namespace Clans
                     if (playerMetadata == null)
                     {
                         player.SendErrorMessage("You are not in a clan!");
-                            return;
+                        return;
                     }
                     if (!playerMetadata.Rank.HasPermission(ClansPermissions.ToggleFriendlyFire))
                     {
                         player.SendErrorMessage(
                             "You do not have permission to change the clan's friendly fire status!");
-                            return;
+                        return;
                     }
 
                     playerMetadata.Clan.IsFriendlyFire = !playerMetadata.Clan.IsFriendlyFire;
                     _clanManager.Update(playerMetadata.Clan);
-                    player.SendSuccessMessage(
-                        $"Friendly fire has been {(playerMetadata.Clan.IsFriendlyFire ? "en" : "dis")}abled!");
+                    player.SendInfoMessage(
+                        $"Friendly fire is now {(playerMetadata.Clan.IsFriendlyFire ? "ON" : "OFF")}.");
                 }
                     break;
                 case "help":
@@ -485,7 +473,6 @@ namespace Clans
                     parameters.RemoveAt(0);
                     var playerName = string.Join(" ", parameters);
                     var matches = TShock.Utils.FindPlayer(playerName);
-                    var match = matches[0];
                     if (matches.Count == 0)
                     {
                         player.SendErrorMessage("Invalid player!");
@@ -496,6 +483,8 @@ namespace Clans
                         TShock.Utils.SendMultipleMatchError(player, matches.Select(p => p.Name));
                         return;
                     }
+
+                    var match = matches[0];
                     if (!match.IsLoggedIn)
                     {
                         player.SendErrorMessage("The player is not logged in.");
@@ -543,8 +532,6 @@ namespace Clans
                     parameters.RemoveAt(0);
                     var username = string.Join(" ", parameters);
                     var users = TShock.Users.GetUsersByName(username);
-                    var user = users[0];
-                    var userMetadata = _memberManager.Get(user.Name);
                     if (users.Count == 0)
                     {
                         player.SendErrorMessage("Invalid player!");
@@ -555,6 +542,9 @@ namespace Clans
                         TShock.Utils.SendMultipleMatchError(player, users.Select(u => u.Name));
                         return;
                     }
+
+                    var user = users[0];
+                    var userMetadata = _memberManager.Get(user.Name);
                     if (userMetadata?.Clan.Name != playerMetadata.Clan.Name)
                     {
                         player.SendErrorMessage("This player is not in your clan!");
@@ -567,8 +557,14 @@ namespace Clans
                     }
 
                     _memberManager.Remove(user.Name);
-                    TShock.Players.Single(p => p?.User.Name == user.Name)?.RemoveData(DataKey);
-                    player.SendSuccessMessage($"'{user.Name}' has been kicked from the clan!");
+                    var kickedPlayer = TShock.Players.Single(p => p?.User?.Name == user.Name);
+                    if (kickedPlayer != null)
+                    {
+                        kickedPlayer.RemoveData(DataKey);
+                        kickedPlayer.SendInfoMessage("You have been kicked from the clan!");
+                    }
+
+                    player.SendInfoMessage($"'{user.Name}' has been kicked from the clan!");
                 }
                     break;
                 case "list":
@@ -620,12 +616,13 @@ namespace Clans
                     {
                         if (string.IsNullOrWhiteSpace(playerMetadata.Clan.Motd))
                         {
-                            player.SendErrorMessage("Your clan does not have a message of the day set.");
+                            player.SendInfoMessage("Your clan does not have a message of the day set.");
                             return;
                         }
 
-                        player.SendInfoMessage("The clan's message of the day is:");
-                        player.SendMessage(playerMetadata.Clan.Motd, playerMetadata.Clan.ChatColor.GetColor());
+                        player.SendMessage(
+                            $"[Clan '{playerMetadata.Clan.Name}' Message of the Day] {playerMetadata.Clan.Motd}",
+                            playerMetadata.Clan.ChatColor.GetColor());
                     }
                     else
                     {
@@ -640,7 +637,7 @@ namespace Clans
                         var newMotd = string.Join(" ", parameters);
                         playerMetadata.Clan.Motd = newMotd;
                         _clanManager.Update(playerMetadata.Clan);
-                        player.SendSuccessMessage($"The clan's message of the day has been set to '{newMotd}'.");
+                        player.SendInfoMessage($"The clan's message of the day has been set to '{newMotd}'.");
                     }
                     break;
                 }
@@ -667,7 +664,7 @@ namespace Clans
                     var prefix = string.Join(" ", parameters);
                     playerMetadata.Clan.Prefix = prefix;
                     _clanManager.Update(playerMetadata.Clan);
-                    player.SendSuccessMessage($"Set clan prefix to '{prefix}'.");
+                    player.SendInfoMessage($"Set clan prefix to '{prefix}'.");
                 }
                     break;
                 case "setrank":
@@ -689,12 +686,8 @@ namespace Clans
                         return;
                     }
 
-                    var rankName = e.Parameters[2];
-                    var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
                     var username = e.Parameters[1];
                     var users = TShock.Users.GetUsersByName(username);
-                    var user = users[0];
-                    var userMetadata = _memberManager.Get(user.Name);
                     if (users.Count == 0)
                     {
                         player.SendErrorMessage("Invalid player!");
@@ -705,11 +698,17 @@ namespace Clans
                         TShock.Utils.SendMultipleMatchError(player, users.Select(u => u.Name));
                         return;
                     }
+
+                    var user = users[0];
+                    var userMetadata = _memberManager.Get(user.Name);
                     if (userMetadata?.Clan.Name != playerMetadata.Clan.Name)
                     {
                         player.SendErrorMessage("This player is not in your clan!");
                         return;
                     }
+
+                    var rankName = e.Parameters[2];
+                    var rank = playerMetadata.Clan.Ranks.SingleOrDefault(r => r.Name == rankName);
                     if (rank == null)
                     {
                         player.SendErrorMessage($"Invalid rank '{rankName}'.");
@@ -718,7 +717,7 @@ namespace Clans
 
                     userMetadata.Rank = rank;
                     _memberManager.Update(user.Name, rank.Name);
-                    player.SendSuccessMessage($"Set {user.Name}'s rank to '{rank.Name}'.");
+                    player.SendInfoMessage($"Set {user.Name}'s rank to '{rank.Name}'.");
                 }
                     break;
                 case "quit":
@@ -796,7 +795,7 @@ namespace Clans
 
                 playerMetadata.Clan.Ranks.Add(new ClanRank(rankName));
                 _clanManager.Update(playerMetadata.Clan);
-                player.SendSuccessMessage($"Successfully created new rank '{rankName}'!");
+                player.SendInfoMessage($"You have created a new rank '{rankName}'.");
             }
             else if (command.Equals("addperm", StringComparison.OrdinalIgnoreCase))
             {
@@ -850,7 +849,7 @@ namespace Clans
 
                 playerMetadata.Clan.Ranks.Remove(rank);
                 _clanManager.Update(playerMetadata.Clan);
-                player.SendSuccessMessage($"Successfully removed rank '{rankName}'!");
+                player.SendInfoMessage($"You have deleted rank '{rankName}'.");
             }
             else if (command.Equals("delperm", StringComparison.OrdinalIgnoreCase))
             {
@@ -896,8 +895,9 @@ namespace Clans
                     return;
                 }
 
-                player.SendSuccessMessage($"Permissions for rank '{rankName}':");
-                player.SendInfoMessage(string.Join(", ", rank.Permissions));
+                var permissions = string.Join(", ", rank.Permissions);
+                player.SendInfoMessage(
+                    $"Permissions for rank '{rankName}': {(permissions.Length > 0 ? permissions : "none")}");
             }
             else if (command.Equals("tag", StringComparison.OrdinalIgnoreCase))
             {

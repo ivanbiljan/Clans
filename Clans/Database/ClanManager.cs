@@ -84,7 +84,7 @@ namespace Clans.Database
         /// <summary>
         ///     Gets a clan by name match.
         /// </summary>
-        /// <param name="clanName">The clan's name.</param>
+        /// <param name="clanName">The clan's name, which must not be <c>null</c>.</param>
         /// <returns>The clan, or <c>null</c> if no match is found.</returns>
         public Clan Get([NotNull] string clanName)
         {

@@ -1,7 +1,7 @@
 ﻿namespace Clans
 {
     /// <summary>
-    ///     Holds clan permissions.
+    ///     Holds clans permissions.
     /// </summary>
     public static class ClansPermissions
     {
