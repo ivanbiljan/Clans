@@ -173,7 +173,9 @@ namespace Clans
                 return;
             }
 
-            var chatColor = playerMetadata.Clan.ChatColor.GetColor();
+            var chatColor = ClansConfig.Instance.ChatColorsEnabled
+                ? playerMetadata.Clan.ChatColor.GetColor()
+                : player.Group.ChatColor.GetColor();
             if (!TShock.Config.EnableChatAboveHeads)
             {
                 var message = string.Format(ClansConfig.Instance.ChatFormat, player.Name, player.Group.Name,
@@ -334,6 +336,13 @@ namespace Clans
 
                     parameters.RemoveAt(0);
                     var clanName = string.Join(" ", parameters);
+                    if (clanName.Length > ClansConfig.Instance.MaximumNameLength)
+                    {
+                        player.SendErrorMessage(
+                            $"Clan name must not be longer than {ClansConfig.Instance.MaximumNameLength} characters.");
+                        return;
+                    }
+
                     var clan = _clanManager.Get(clanName);
                     if (clan != null)
                     {
@@ -662,6 +671,13 @@ namespace Clans
 
                     parameters.RemoveAt(0);
                     var prefix = string.Join(" ", parameters);
+                    if (prefix.Length > ClansConfig.Instance.MaximumPrefixLength)
+                    {
+                        player.SendErrorMessage(
+                            $"Clan prefix must not be longer than {ClansConfig.Instance.MaximumPrefixLength} characters.");
+                        return;
+                    }
+
                     playerMetadata.Clan.Prefix = prefix;
                     _clanManager.Update(playerMetadata.Clan);
                     player.SendInfoMessage($"Set clan prefix to '{prefix}'.");
