@@ -9,17 +9,17 @@ namespace Clans.Commands
     internal sealed class CommandAttribute : Attribute
     {
         /// <summary>
-        ///     Initializes a new instance of the <see cref="CommandAttribute" /> class with the specified name, description and
-        ///     permissions.
+        ///     Initializes a new instance of the <see cref="CommandAttribute" /> class with the specified permission, description
+        ///     and aliases.
         /// </summary>
-        /// <param name="name">The name.</param>
+        /// <param name="permission">The permission.</param>
         /// <param name="description">The description.</param>
-        /// <param name="permissions">The permissions.</param>
-        public CommandAttribute(string name, string description = null, params string[] permissions)
+        /// <param name="names">The names.</param>
+        public CommandAttribute(string permission, string description, params string[] names)
         {
-            Name = name;
-            Description = description ?? "N/A";
-            Permissions = permissions;
+            Permission = permission;
+            Description = description;
+            Names = names;
         }
 
         /// <summary>
@@ -28,13 +28,13 @@ namespace Clans.Commands
         public string Description { get; }
 
         /// <summary>
-        ///     Gets the name.
+        ///     Gets the names.
         /// </summary>
-        public string Name { get; }
+        public string[] Names { get; }
 
         /// <summary>
-        ///     Gets the permissions.
+        ///     Gets the permission required for executing the command.
         /// </summary>
-        public string[] Permissions { get; }
+        public string Permission { get; }
     }
 }

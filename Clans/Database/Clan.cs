@@ -29,7 +29,7 @@ namespace Clans.Database
         public string ChatColor { get; set; } = "255,255,255";
 
         /// <summary>
-        ///     Gets or sets a value indicating whether friendly fire is enabled for this clan.
+        ///     Gets or sets a value indicating whether friendly fire is enabled.
         /// </summary>
         public bool IsFriendlyFire { get; set; }
 
@@ -55,6 +55,11 @@ namespace Clans.Database
         /// </summary>
         [NotNull]
         public string Owner { get; }
+
+        /// <summary>
+        ///     Gets the permissions.
+        /// </summary>
+        public IList<string> Permissions { get; } = new List<string>();
 
         /// <summary>
         ///     Gets or sets the prefix.

@@ -26,22 +26,26 @@ namespace Clans.Database
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
 
             _connection.Query("CREATE TABLE IF NOT EXISTS Clans (" +
-                              "Clan TEXT PRIMARY KEY, " +
-                              "Owner TEXT, " +
-                              "Prefix TEXT, " +
-                              "ChatColor TEXT, " +
-                              "Motd TEXT, " +
-                              "IsFriendlyFire INTEGER, " +
+                              "Clan             TEXT PRIMARY KEY, " +
+                              "Owner            TEXT, " +
+                              "Prefix           TEXT, " +
+                              "ChatColor        TEXT, " +
+                              "Motd             TEXT, " +
+                              "IsFriendlyFire   INTEGER, " +
                               "UNIQUE(Clan) ON CONFLICT REPLACE)");
+            _connection.Query("CREATE TABLE IF NOT EXISTS ClanHasPermission (" +
+                              "Clan             TEXT, " +
+                              "Permission       TEXT, " +
+                              "FOREIGN KEY(Clan) REFERENCES Clans(Clan) ON DELETE CASCADE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanRanks (" +
-                              "Clan TEXT, " +
-                              "Rank TEXT, " +
-                              "Tag TEXT, " +
+                              "Clan             TEXT, " +
+                              "Rank             TEXT, " +
+                              "Tag              TEXT, " +
                               "FOREIGN KEY(Clan) REFERENCES Clans(Clan) ON DELETE CASCADE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanRankHasPermission (" +
-                              "Clan TEXT, " +
-                              "Rank TEXT, " +
-                              "Permission TEXT, " +
+                              "Clan             TEXT, " +
+                              "Rank             TEXT, " +
+                              "Permission       TEXT, " +
                               "FOREIGN KEY(Clan, Rank) REFERENCES ClanRanks(Clan, Rank) ON DELETE CASCADE)");
         }
 
@@ -90,7 +94,7 @@ namespace Clans.Database
         {
             if (clanName == null)
             {
-                throw new ArgumentNullException();
+                throw new ArgumentNullException(nameof(clanName));
             }
 
             lock (_syncLock)
@@ -135,8 +139,17 @@ namespace Clans.Database
                             Prefix = prefix,
                             ChatColor = chatColor,
                             Motd = motd,
-                            IsFriendlyFire = isFriendlyFire,
+                            IsFriendlyFire = isFriendlyFire
                         };
+                        using (var reader2 =
+                            _connection.QueryReader("SELECT Permission FROM ClanHasPermission WHERE Clan = @0", name))
+                        {
+                            while (reader2.Read())
+                            {
+                                var permission = reader2.Get<string>("Permission");
+                                clan.Permissions.Add(permission);
+                            }
+                        }
                         using (var reader2 =
                             _connection.QueryReader("SELECT Rank, Tag FROM ClanRanks WHERE Clan = @0", name))
                         {
@@ -199,6 +212,7 @@ namespace Clans.Database
             _connection.Query(
                 "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, IsFriendlyFire = @3 WHERE Clan = @4",
                 clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0, clan.Name);
+            _connection.Query("DELETE FROM ClanHasPermission WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRanks WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRankHasPermission WHERE Clan = @0", clan.Name);
             using (var dbConnection = _connection.CloneEx())
@@ -206,6 +220,19 @@ namespace Clans.Database
                 dbConnection.Open();
                 using (var transaction = dbConnection.BeginTransaction())
                 {
+                    using (var command = (SqliteCommand) dbConnection.CreateCommand())
+                    {
+                        command.CommandText = "INSERT INTO ClanHasPermission (Clan, Permission) VALUES (@0, @1)";
+                        command.AddParameter("@0", clan.Name);
+                        command.AddParameter("@1", null);
+
+                        foreach (var permission in clan.Permissions)
+                        {
+                            command.Parameters["@1"].Value = permission;
+                            command.ExecuteNonQuery();
+                        }
+                    }
+
                     foreach (var rank in clan.Ranks)
                     {
                         using (var command = (SqliteCommand) dbConnection.CreateCommand())

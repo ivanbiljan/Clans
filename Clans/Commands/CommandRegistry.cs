@@ -59,7 +59,8 @@ namespace Clans.Commands
                     var commandDelegate =
                         (CommandDelegate) Delegate.CreateDelegate(typeof(CommandDelegate), _plugin, method);
                     var command =
-                        new Command(commandAttribute.Permissions.ToList(), commandDelegate, commandAttribute.Name)
+                        new Command(new List<string> {commandAttribute.Permission}, commandDelegate,
+                            commandAttribute.Names)
                         {
                             HelpText = commandAttribute.Description
                         };

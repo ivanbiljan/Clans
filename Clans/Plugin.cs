@@ -28,8 +28,8 @@ namespace Clans
         private const string DataKey = "Clans_PlayerMetadata";
         private const string InvitationKey = "Clans_Invitation";
 
-        private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "clans.json");
         private readonly CommandRegistry _commandRegistry;
+        private readonly ClansConfig _configuration = new ClansConfig();
 
         private ClanManager _clanManager;
         private MemberManager _memberManager;
@@ -55,14 +55,7 @@ namespace Clans
         /// <inheritdoc />
         public override void Initialize()
         {
-            if (File.Exists(ConfigPath))
-            {
-                ClansConfig.Instance = JsonConvert.DeserializeObject<ClansConfig>(File.ReadAllText(ConfigPath));
-            }
-            else
-            {
-                File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(ClansConfig.Instance, Formatting.Indented));
-            }
+            _configuration.Load();
 
             var databaseConnection =
                 new SqliteConnection($"uri=file://{Path.Combine(TShock.SavePath, "tshock.sqlite")},Version=3");
@@ -71,6 +64,7 @@ namespace Clans
             _commandRegistry.RegisterCommands();
 
             GeneralHooks.ReloadEvent += OnReload;
+            PlayerHooks.PlayerPermission += OnPlayerPermission;
             PlayerHooks.PlayerPostLogin += OnPlayerPostLogin;
             ServerApi.Hooks.NetSendBytes.Register(this, OnNetSendBytes);
             ServerApi.Hooks.ServerChat.Register(this, OnServerChat);
@@ -81,13 +75,14 @@ namespace Clans
         {
             if (disposing)
             {
-                File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(ClansConfig.Instance, Formatting.Indented));
+                _configuration.Save();
 
                 _clanManager.Dispose();
                 _memberManager.Dispose();
                 _commandRegistry.Dispose();
 
                 GeneralHooks.ReloadEvent -= OnReload;
+                PlayerHooks.PlayerPermission -= OnPlayerPermission;
                 PlayerHooks.PlayerPostLogin -= OnPlayerPostLogin;
                 ServerApi.Hooks.NetSendBytes.Deregister(this, OnNetSendBytes);
                 ServerApi.Hooks.ServerChat.Deregister(this, OnServerChat);
@@ -96,120 +91,69 @@ namespace Clans
             base.Dispose(disposing);
         }
 
-        private static void OnNetSendBytes(SendBytesEventArgs e)
+        [UsedImplicitly]
+        [Command("clans.admin", "Allows taking administrative actions over clans.", "aclan")]
+        private void AdminClanCommand(CommandArgs e)
         {
-            var packetType = e.Buffer[2];
-            if (e.Handled && packetType == (int) PacketTypes.PlayerHurtV2)
+            var parameters = e.Parameters;
+            var player = e.Player;
+            if (parameters.Count < 1)
             {
+                player.SendErrorMessage("Invalid syntax! Proper syntax:");
+                player.SendErrorMessage($"{TShock.Config.CommandSpecifier}aclan addperm <clan name> <permissions...>");
+                player.SendErrorMessage($"{TShock.Config.CommandSpecifier}aclan delperm <clan name> <permissions...>");
                 return;
             }
 
-            var playerMetadata = TShock.Players[e.Socket.Id]?.GetData<PlayerMetadata>(DataKey);
-            if (playerMetadata == null || playerMetadata.Clan.IsFriendlyFire)
+            var subcommand = parameters[0].ToLowerInvariant();
+            if (subcommand.Equals("addperm", StringComparison.OrdinalIgnoreCase))
             {
-                return;
-            }
-
-            var dealerIndex = -1;
-            var playerDeathReason = (BitsByte) e.Buffer[4];
-            if (playerDeathReason[0])
-            {
-                dealerIndex = e.Buffer[5];
-            }
-            if (dealerIndex != -1)
-            {
-                var dealer = TShock.Players[dealerIndex];
-                var dealerMetadata = dealer?.GetData<PlayerMetadata>(DataKey);
-                if (dealerMetadata == null)
+                if (parameters.Count < 3)
                 {
-                    return;
-                }
-                if (dealerMetadata.Clan.Name != playerMetadata.Clan.Name)
-                {
+                    player.SendErrorMessage(
+                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}aclan addperm <clan name> <permissions>");
                     return;
                 }
 
-                using (var writer = new BinaryWriter(new MemoryStream(e.Buffer, 3, e.Count - 3)))
+                var clanName = parameters[1];
+                var clan = _clanManager.Get(clanName);
+                if (clan == null)
                 {
-                    writer.Write((byte) 255);
-                    writer.Write((byte) 0);
-                    writer.Write((short) 0);
+                    player.SendErrorMessage($"Invalid clan '{clanName}'.");
+                    return;
                 }
+
+                parameters.RemoveRange(0, 2);
+                parameters.ForEach(p => clan.Permissions.Add(p));
+                _clanManager.Update(clan);
+                player.SendSuccessMessage($"Clan '{clanName}' has been modified successfully.");
             }
-
-            e.Handled = true;
-        }
-
-        private static void OnReload(ReloadEventArgs e)
-        {
-            ClansConfig.Instance = JsonConvert.DeserializeObject<ClansConfig>(File.ReadAllText(ConfigPath));
-            e.Player.SendSuccessMessage("Clans configuration file reloaded!");
-        }
-
-        private static void OnServerChat(ServerChatEventArgs e)
-        {
-            if (e.Handled)
+            else if (subcommand.Equals("delperm", StringComparison.OrdinalIgnoreCase))
             {
-                return;
-            }
-            if (string.IsNullOrWhiteSpace(ClansConfig.Instance.ChatFormat))
-            {
-                return;
-            }
-            if (e.Text.StartsWith(TShock.Config.CommandSpecifier) ||
-                e.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
-            {
-                return;
-            }
+                if (parameters.Count < 3)
+                {
+                    player.SendErrorMessage(
+                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}aclan delperm <clan name> <permissions>");
+                    return;
+                }
 
-            var player = TShock.Players[e.Who];
-            var playerMetadata = player?.GetData<PlayerMetadata>(DataKey);
-            if (playerMetadata == null)
-            {
-                return;
-            }
-            if (!player.HasPermission(Permissions.canchat) || player.mute)
-            {
-                return;
-            }
+                var clanName = parameters[1];
+                var clan = _clanManager.Get(clanName);
+                if (clan == null)
+                {
+                    player.SendErrorMessage($"Invalid clan '{clanName}'.");
+                    return;
+                }
 
-            var chatColor = ClansConfig.Instance.ChatColorsEnabled
-                ? playerMetadata.Clan.ChatColor.GetColor()
-                : player.Group.ChatColor.GetColor();
-            if (!TShock.Config.EnableChatAboveHeads)
-            {
-                var message = string.Format(ClansConfig.Instance.ChatFormat, player.Name, player.Group.Name,
-                    player.Group.Prefix, player.Group.Suffix, playerMetadata.Clan.Prefix, e.Text);
-                TSPlayer.All.SendMessage(message, chatColor);
-                TSPlayer.Server.SendMessage(message, chatColor);
-                TShock.Log.Info($"Broadcast: {message}");
+                parameters.RemoveRange(0, 2);
+                parameters.ForEach(p => clan.Permissions.Remove(p));
+                _clanManager.Update(clan);
+                player.SendSuccessMessage($"Clan '{clanName}' has been modified successfully.");
             }
-            else
-            {
-                var playerName = player.TPlayer.name;
-                player.TPlayer.name = string.Format(TShock.Config.ChatAboveHeadsFormat, player.Group.Name,
-                    playerMetadata.Clan.Prefix, player.Name, player.Group.Suffix);
-                NetMessage.SendData((int) PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(player.TPlayer.name),
-                    e.Who);
-
-                player.TPlayer.name = playerName;
-                var packet =
-                    NetTextModule.SerializeServerMessage(NetworkText.FromLiteral(e.Text), chatColor, (byte) e.Who);
-                NetManager.Instance.Broadcast(packet, e.Who);
-                NetMessage.SendData((int) PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(playerName), e.Who);
-
-                var msg =
-                    $"<{string.Format(TShock.Config.ChatAboveHeadsFormat, player.Group.Name, playerMetadata.Clan.Prefix, player.Name, player.Group.Suffix)}> {e.Text}";
-                player.SendMessage(msg, chatColor);
-                TSPlayer.Server.SendMessage(msg, chatColor);
-                TShock.Log.Info($"Broadcast: {msg}");
-            }
-
-            e.Handled = true;
         }
 
         [UsedImplicitly]
-        [Command("c", permissions: "clans.use")]
+        [Command("clans.use", "Allows clan communication.", "c", "csay")]
         private void ClanChatCommand(CommandArgs e)
         {
             var parameters = e.Parameters;
@@ -237,12 +181,12 @@ namespace Clans
             }
 
             var message = string.Join(" ", parameters);
-            playerMetadata.Clan.SendMessage(string.Format(ClansConfig.Instance.ClanChatFormat, player.Name,
+            playerMetadata.Clan.SendMessage(string.Format(_configuration.ClanChatFormat, player.Name,
                 playerMetadata.Rank.Tag, message));
         }
 
         [UsedImplicitly]
-        [Command("clan", permissions: "clans.use")]
+        [Command("clans.use", "The main clans command.", "clan")]
         private void ClanCommand(CommandArgs e)
         {
             int pageNumber;
@@ -336,10 +280,10 @@ namespace Clans
 
                     parameters.RemoveAt(0);
                     var clanName = string.Join(" ", parameters);
-                    if (clanName.Length > ClansConfig.Instance.MaximumNameLength)
+                    if (clanName.Length > _configuration.MaximumNameLength)
                     {
                         player.SendErrorMessage(
-                            $"Clan name must not be longer than {ClansConfig.Instance.MaximumNameLength} characters.");
+                            $"Clan name must not be longer than {_configuration.MaximumNameLength} characters.");
                         return;
                     }
 
@@ -671,10 +615,10 @@ namespace Clans
 
                     parameters.RemoveAt(0);
                     var prefix = string.Join(" ", parameters);
-                    if (prefix.Length > ClansConfig.Instance.MaximumPrefixLength)
+                    if (prefix.Length > _configuration.MaximumPrefixLength)
                     {
                         player.SendErrorMessage(
-                            $"Clan prefix must not be longer than {ClansConfig.Instance.MaximumPrefixLength} characters.");
+                            $"Clan prefix must not be longer than {_configuration.MaximumPrefixLength} characters.");
                         return;
                     }
 
@@ -761,7 +705,7 @@ namespace Clans
         }
 
         [UsedImplicitly]
-        [Command("clanrank", permissions: "clans.use")]
+        [Command("clans.use", "Allows clan owners to manage ranks.", "clanrank")]
         private void ClanRankCommand(CommandArgs e)
         {
             var parameters = e.Parameters;
@@ -938,6 +882,67 @@ namespace Clans
             }
         }
 
+        private void OnNetSendBytes(SendBytesEventArgs e)
+        {
+            if (!_configuration.ToggleFriendlyFire)
+            {
+                return;
+            }
+
+            var packetType = e.Buffer[2];
+            if (e.Handled && packetType == (int) PacketTypes.PlayerHurtV2)
+            {
+                return;
+            }
+
+            var playerMetadata = TShock.Players[e.Socket.Id]?.GetData<PlayerMetadata>(DataKey);
+            if (playerMetadata == null || playerMetadata.Clan.IsFriendlyFire)
+            {
+                return;
+            }
+
+            var dealerIndex = -1;
+            var playerDeathReason = (BitsByte) e.Buffer[4];
+            if (playerDeathReason[0])
+            {
+                dealerIndex = e.Buffer[5];
+            }
+            if (dealerIndex != -1)
+            {
+                var dealer = TShock.Players[dealerIndex];
+                var dealerMetadata = dealer?.GetData<PlayerMetadata>(DataKey);
+                if (dealerMetadata?.Clan.Name != playerMetadata.Clan.Name)
+                {
+                    return;
+                }
+
+                using (var writer = new BinaryWriter(new MemoryStream(e.Buffer, 3, e.Count - 3)))
+                {
+                    writer.Write((byte) 255);
+                    writer.Write((byte) 0);
+                    writer.Write((short) 0);
+                }
+            }
+
+            e.Handled = true;
+        }
+
+        private void OnPlayerPermission(PlayerPermissionEventArgs e)
+        {
+            if (!_configuration.ToggleClanPermissions)
+            {
+                return;
+            }
+
+            var clan = e.Player.GetData<PlayerMetadata>(DataKey)?.Clan;
+            if (clan == null)
+            {
+                return;
+            }
+
+            e.Handled = clan.Permissions.Contains(e.Permission);
+        }
+
         private void OnPlayerPostLogin(PlayerPostLoginEventArgs e)
         {
             var metadata = _memberManager.Get(e.Player.User.Name);
@@ -947,6 +952,74 @@ namespace Clans
             }
 
             e.Player.SetData(DataKey, metadata);
+        }
+
+        private void OnReload(ReloadEventArgs e)
+        {
+            _configuration.Load();
+            e.Player.SendSuccessMessage("Clans configuration file reloaded!");
+        }
+
+        private void OnServerChat(ServerChatEventArgs e)
+        {
+            if (e.Handled)
+            {
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_configuration.ChatFormat))
+            {
+                return;
+            }
+            if (e.Text.StartsWith(TShock.Config.CommandSpecifier) ||
+                e.Text.StartsWith(TShock.Config.CommandSilentSpecifier))
+            {
+                return;
+            }
+
+            var player = TShock.Players[e.Who];
+            var playerMetadata = player?.GetData<PlayerMetadata>(DataKey);
+            if (playerMetadata == null)
+            {
+                return;
+            }
+            if (!player.HasPermission(Permissions.canchat) || player.mute)
+            {
+                return;
+            }
+
+            var chatColor = _configuration.ChatColorsEnabled
+                ? playerMetadata.Clan.ChatColor.GetColor()
+                : player.Group.ChatColor.GetColor();
+            if (!TShock.Config.EnableChatAboveHeads)
+            {
+                var message = string.Format(_configuration.ChatFormat, player.Name, player.Group.Name,
+                    player.Group.Prefix, player.Group.Suffix, playerMetadata.Clan.Prefix, e.Text);
+                TSPlayer.All.SendMessage(message, chatColor);
+                TSPlayer.Server.SendMessage(message, chatColor);
+                TShock.Log.Info($"Broadcast: {message}");
+            }
+            else
+            {
+                var playerName = player.TPlayer.name;
+                player.TPlayer.name = string.Format(TShock.Config.ChatAboveHeadsFormat, player.Group.Name,
+                    playerMetadata.Clan.Prefix, player.Name, player.Group.Suffix);
+                NetMessage.SendData((int) PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(player.TPlayer.name),
+                    e.Who);
+
+                player.TPlayer.name = playerName;
+                var packet =
+                    NetTextModule.SerializeServerMessage(NetworkText.FromLiteral(e.Text), chatColor, (byte) e.Who);
+                NetManager.Instance.Broadcast(packet, e.Who);
+                NetMessage.SendData((int) PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(playerName), e.Who);
+
+                var msg =
+                    $"<{string.Format(TShock.Config.ChatAboveHeadsFormat, player.Group.Name, playerMetadata.Clan.Prefix, player.Name, player.Group.Suffix)}> {e.Text}";
+                player.SendMessage(msg, chatColor);
+                TSPlayer.Server.SendMessage(msg, chatColor);
+                TShock.Log.Info($"Broadcast: {msg}");
+            }
+
+            e.Handled = true;
         }
     }
 }
