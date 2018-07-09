@@ -28,10 +28,11 @@ namespace Clans
         private const string DataKey = "Clans_PlayerMetadata";
         private const string InvitationKey = "Clans_Invitation";
 
+        private static readonly string ConfigPath = Path.Combine("clans", "config.json");
         private readonly CommandRegistry _commandRegistry;
-        private readonly ClansConfig _configuration = new ClansConfig();
 
         private ClanManager _clanManager;
+        private ClansConfig _configuration = new ClansConfig();
         private MemberManager _memberManager;
 
         /// <inheritdoc />
@@ -55,10 +56,14 @@ namespace Clans
         /// <inheritdoc />
         public override void Initialize()
         {
-            _configuration.Load();
+            Directory.CreateDirectory("clans");
+            if (File.Exists(ConfigPath))
+            {
+                _configuration = JsonConvert.DeserializeObject<ClansConfig>(File.ReadAllText(ConfigPath));
+            }
 
             var databaseConnection =
-                new SqliteConnection($"uri=file://{Path.Combine(TShock.SavePath, "tshock.sqlite")},Version=3");
+                new SqliteConnection($"uri=file://{Path.Combine("clans", "database.sqlite")},Version=3");
             (_clanManager = new ClanManager(databaseConnection)).Load();
             (_memberManager = new MemberManager(databaseConnection, _clanManager)).Load();
             _commandRegistry.RegisterCommands();
@@ -75,7 +80,7 @@ namespace Clans
         {
             if (disposing)
             {
-                _configuration.Save();
+                File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_configuration, Formatting.Indented));
 
                 _clanManager.Dispose();
                 _memberManager.Dispose();
@@ -102,6 +107,7 @@ namespace Clans
                 player.SendErrorMessage("Invalid syntax! Proper syntax:");
                 player.SendErrorMessage($"{TShock.Config.CommandSpecifier}aclan addperm <clan name> <permissions...>");
                 player.SendErrorMessage($"{TShock.Config.CommandSpecifier}aclan delperm <clan name> <permissions...>");
+                player.SendErrorMessage($"{TShock.Config.CommandSpecifier}aclan listperm <clan name>");
                 return;
             }
 
@@ -149,6 +155,27 @@ namespace Clans
                 parameters.ForEach(p => clan.Permissions.Remove(p));
                 _clanManager.Update(clan);
                 player.SendSuccessMessage($"Clan '{clanName}' has been modified successfully.");
+            }
+            else if (subcommand.Equals("listperm", StringComparison.OrdinalIgnoreCase))
+            {
+                if (parameters.Count < 2)
+                {
+                    player.SendErrorMessage(
+                        $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}aclan listperm <clan name>");
+                    return;
+                }
+
+                parameters.RemoveAt(0);
+                var clanName = string.Join(" ", parameters);
+                var clan = _clanManager.Get(clanName);
+                if (clan == null)
+                {
+                    player.SendErrorMessage($"Invalid clan '{clanName}'.");
+                    return;
+                }
+
+                player.SendInfoMessage(
+                    $"Permissions for clan '{clan.Name}': {(clan.Permissions.Any() ? string.Join(", ", clan.Permissions) : "none")}");
             }
         }
 
@@ -269,6 +296,11 @@ namespace Clans
                     if (playerMetadata != null)
                     {
                         player.SendErrorMessage("You are already in a clan!");
+                        return;
+                    }
+                    if (_clanManager.GetAll().Count == _configuration.ClanLimit)
+                    {
+                        player.SendErrorMessage("The clan limit has been reached.");
                         return;
                     }
                     if (parameters.Count < 2)
@@ -956,7 +988,7 @@ namespace Clans
 
         private void OnReload(ReloadEventArgs e)
         {
-            _configuration.Load();
+            _configuration = JsonConvert.DeserializeObject<ClansConfig>(File.ReadAllText(ConfigPath));
             e.Player.SendSuccessMessage("Clans configuration file reloaded!");
         }
 

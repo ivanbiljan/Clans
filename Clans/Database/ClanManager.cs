@@ -36,6 +36,7 @@ namespace Clans.Database
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanHasPermission (" +
                               "Clan             TEXT, " +
                               "Permission       TEXT, " +
+                              "UNIQUE(Clan, Permission) ON CONFLICT REPLACE, " +
                               "FOREIGN KEY(Clan) REFERENCES Clans(Clan) ON DELETE CASCADE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanRanks (" +
                               "Clan             TEXT, " +

@@ -29,9 +29,9 @@ namespace Clans.Database
             _clanManager = clanManager ?? throw new ArgumentNullException(nameof(clanManager));
 
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanMembers (" +
-                              "Clan TEXT, " +
-                              "Rank TEXT, " +
-                              "Username TEXT, " +
+                              "Clan         TEXT, " +
+                              "Rank         TEXT, " +
+                              "Username     TEXT, " +
                               "UNIQUE(Username) ON CONFLICT REPLACE, " +
                               "FOREIGN KEY(Clan) REFERENCES Clans(Clan) ON DELETE CASCADE)");
         }
