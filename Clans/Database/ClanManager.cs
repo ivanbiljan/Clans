@@ -32,6 +32,7 @@ namespace Clans.Database
                               "ChatColor        TEXT, " +
                               "Motd             TEXT, " +
                               "IsFriendlyFire   INTEGER, " +
+                              "IsPrivate        INTEGER, " +
                               "UNIQUE(Clan) ON CONFLICT REPLACE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanHasPermission (" +
                               "Clan             TEXT, " +
@@ -80,8 +81,9 @@ namespace Clans.Database
                 var clan = new Clan(name, owner);
                 _clans.Add(clan);
                 _connection.Query(
-                    "INSERT INTO Clans (Clan, Owner, Prefix, ChatColor, Motd, IsFriendlyFire) VALUES (@0, @1, @2, @3, @4, @5)",
-                    clan.Name, clan.Owner, clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0);
+                    "INSERT INTO Clans (Clan, Owner, Prefix, ChatColor, Motd, IsFriendlyFire, IsPrivate) VALUES (@0, @1, @2, @3, @4, @5, @6)",
+                    clan.Name, clan.Owner, clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0,
+                    clan.IsPrivate ? 1 : 0);
                 return clan;
             }
         }
@@ -134,13 +136,15 @@ namespace Clans.Database
                         var chatColor = reader.Get<string>("ChatColor");
                         var motd = reader.Get<string>("Motd");
                         var isFriendlyFire = reader.Get<int>("IsFriendlyFire") == 1;
+                        var isPrivate = reader.Get<int>("IsPrivate") == 1;
 
                         var clan = new Clan(name, owner)
                         {
                             Prefix = prefix,
                             ChatColor = chatColor,
                             Motd = motd,
-                            IsFriendlyFire = isFriendlyFire
+                            IsFriendlyFire = isFriendlyFire,
+                            IsPrivate = isPrivate
                         };
                         using (var reader2 =
                             _connection.QueryReader("SELECT Permission FROM ClanHasPermission WHERE Clan = @0", name))
@@ -211,8 +215,8 @@ namespace Clans.Database
             }
 
             _connection.Query(
-                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, IsFriendlyFire = @3 WHERE Clan = @4",
-                clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0, clan.Name);
+                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, IsFriendlyFire = @3, IsPrivate = @4 WHERE Clan = @5",
+                clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0, clan.IsPrivate ? 1 : 0, clan.Name);
             _connection.Query("DELETE FROM ClanHasPermission WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRanks WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRankHasPermission WHERE Clan = @0", clan.Name);

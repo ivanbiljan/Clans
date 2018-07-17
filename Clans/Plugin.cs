@@ -245,7 +245,7 @@ namespace Clans
                     var metadata = _memberManager.Add(invitationData, ClanRank.DefaultRank, player.User.Name);
                     player.RemoveData(InvitationKey);
                     player.SetData(DataKey, metadata);
-                    player.SendSuccessMessage($"You have joined clan '{metadata.Clan.Name}'!");
+                    player.SendInfoMessage($"You have joined clan '{metadata.Clan.Name}'!");
                     metadata.Clan.SendMessage($"(Clan) {player.User.Name} has joined the clan!", player.Index);
                 }
                     break;
@@ -417,6 +417,8 @@ namespace Clans
                         "disband - disbands a clan",
                         "quit - leaves a clan",
                         "friendlyfire - toggles friendly fire",
+                        "private - toggles invite-only mode",
+                        "join - joins a clan",
                         "invite <player name> - invites a player to join the clan",
                         "accept - accepts a clan invitation",
                         "decline = declines a clan invitation",
@@ -493,6 +495,45 @@ namespace Clans
                     match.SendInfoMessage(
                         $"Type {TShock.Config.CommandSpecifier}clan decline to decline the invitation.");
                     player.SendSuccessMessage($"'{match.Name}' has been invited to join your clan!");
+                }
+                    break;
+                case "join":
+                {
+                    if (playerMetadata != null)
+                    {
+                        player.SendErrorMessage("You are already in a clan!");
+                        return;
+                    }
+                    if (invitationData != null)
+                    {
+                        player.SendInfoMessage(
+                            "You have a pending clan invitation. In order to join a clan you must first decline the current invitation.");
+                        return;
+                    }
+                    if (parameters.Count < 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan join <clan name>");
+                        return;
+                    }
+
+                    parameters.RemoveAt(0);
+                    var clanName = string.Join(" ", parameters);
+                    var clan = _clanManager.Get(clanName);
+                    if (clan == null)
+                    {
+                        player.SendErrorMessage($"Invalid clan '{clanName}'.");
+                        return;
+                    }
+                    if (clan.IsPrivate)
+                    {
+                        player.SendErrorMessage("This clan is set to invite-only.");
+                        return;
+                    }
+
+                    _memberManager.Add(clan, ClanRank.DefaultRank, player.User.Name);
+                    clan.SendMessage($"(Clan) {player.User.Name} has joined the clan!", player.Index);
+                    player.SendInfoMessage($"You have joined clan '{clan.Name}'!");
                 }
                     break;
                 case "kick":
@@ -657,6 +698,24 @@ namespace Clans
                     playerMetadata.Clan.Prefix = prefix;
                     _clanManager.Update(playerMetadata.Clan);
                     player.SendInfoMessage($"Set clan prefix to '{prefix}'.");
+                }
+                    break;
+                case "private":
+                {
+                    if (playerMetadata == null)
+                    {
+                        player.SendErrorMessage("You are not in a clan!");
+                        return;
+                    }
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.TogglePrivateStatus))
+                    {
+                        player.SendErrorMessage("You do not have permission to change the clan's private flag!");
+                        return;
+                    }
+
+                    playerMetadata.Clan.IsPrivate = !playerMetadata.Clan.IsPrivate;
+                    player.SendInfoMessage(
+                        $"The clan is {(playerMetadata.Clan.IsPrivate ? "now" : "no longer")} private.");
                 }
                     break;
                 case "setrank":

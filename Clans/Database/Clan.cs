@@ -34,6 +34,11 @@ namespace Clans.Database
         public bool IsFriendlyFire { get; set; }
 
         /// <summary>
+        ///     Gets or sets a value indicating whether the clan is invite-only.
+        /// </summary>
+        public bool IsPrivate { get; set; }
+
+        /// <summary>
         ///     Gets the members.
         /// </summary>
         [ItemNotNull]

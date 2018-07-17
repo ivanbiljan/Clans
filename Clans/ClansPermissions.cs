@@ -68,5 +68,11 @@
         /// </summary>
         /// <remarks>This permission applies to clan ranks only.</remarks>
         public static readonly string ToggleFriendlyFire = "clans.ranks.togglefriendlyfire";
+
+        /// <summary>
+        ///     The permission required for toggling the clan's 'Private' flag.
+        /// </summary>
+        /// <remarks>This permission applies to clan ranks only.</remarks>
+        public static readonly string TogglePrivateStatus = "clans.ranks.toggleprivate";
     }
 }
