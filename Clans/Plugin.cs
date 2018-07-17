@@ -249,6 +249,60 @@ namespace Clans
                     metadata.Clan.SendMessage($"(Clan) {player.User.Name} has joined the clan!", player.Index);
                 }
                     break;
+                case "ban":
+                {
+                    if (playerMetadata == null)
+                    {
+                        player.SendErrorMessage("You are not in a clan!");
+                        return;
+                    }
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.BanPlayers))
+                    {
+                        player.SendErrorMessage("You do not have permission to ban players!");
+                        return;
+                    }
+                    if (parameters.Count < 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan ban <player name>");
+                        return;
+                    }
+
+                    parameters.RemoveAt(0);
+                    var username = string.Join(" ", parameters);
+                    var players = TShock.Users.GetUsersByName(username);
+                    if (players.Count == 0)
+                    {
+                        player.SendErrorMessage($"Invalid player '{username}'.");
+                        return;
+                    }
+                    if (players.Count > 1)
+                    {
+                        TShock.Utils.SendMultipleMatchError(player, players.Select(p => p.Name));
+                        return;
+                    }
+                    if (playerMetadata.Clan.BannedUsers.Contains(players[0].Name))
+                    {
+                        player.SendInfoMessage($"Player '{players[0].Name}' is already banned.");
+                        return;
+                    }
+
+                    var targetPlayer = TShock.Players.Single(p => p?.User?.Name == players[0].Name);
+                    var targetMetadata = targetPlayer?.GetData<PlayerMetadata>(DataKey);
+                    if (targetMetadata?.Clan.Name == playerMetadata.Clan.Name &&
+                        targetMetadata.Rank.HasPermission(ClansPermissions.ImmuneToKick))
+                    {
+                        player.SendErrorMessage("You cannot ban this player!");
+                        return;
+                    }
+
+                    playerMetadata.Clan.BannedUsers.Add(players[0].Name);
+                    _clanManager.Update(playerMetadata.Clan);
+                    targetPlayer.RemoveData(DataKey);
+                    targetPlayer.SendInfoMessage("You have been kicked from the clan!");
+                    player.SendInfoMessage($"{players[0].Name} is now banned from the clan.");
+                }
+                    break;
                 case "color":
                 {
                     if (playerMetadata == null)
@@ -499,6 +553,11 @@ namespace Clans
                     break;
                 case "join":
                 {
+                    if (!player.IsLoggedIn)
+                    {
+                        player.SendErrorMessage("You must be logged in to do that.");
+                        return;
+                    }
                     if (playerMetadata != null)
                     {
                         player.SendErrorMessage("You are already in a clan!");
@@ -527,7 +586,12 @@ namespace Clans
                     }
                     if (clan.IsPrivate)
                     {
-                        player.SendErrorMessage("This clan is set to invite-only.");
+                        player.SendInfoMessage("This clan is set to invite-only.");
+                        return;
+                    }
+                    if (clan.BannedUsers.Contains(player.User.Name))
+                    {
+                        player.SendInfoMessage("You have been banned from this clan.");
                         return;
                     }
 

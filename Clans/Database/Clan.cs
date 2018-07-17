@@ -24,6 +24,11 @@ namespace Clans.Database
         }
 
         /// <summary>
+        ///     Gets the list of banned users.
+        /// </summary>
+        public IList<string> BannedUsers { get; } = new List<string>();
+
+        /// <summary>
         ///     Gets or sets the chat color.
         /// </summary>
         public string ChatColor { get; set; } = "255,255,255";

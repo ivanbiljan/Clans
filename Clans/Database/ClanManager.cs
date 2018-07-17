@@ -34,6 +34,11 @@ namespace Clans.Database
                               "IsFriendlyFire   INTEGER, " +
                               "IsPrivate        INTEGER, " +
                               "UNIQUE(Clan) ON CONFLICT REPLACE)");
+            _connection.Query("CREATE TABLE IF NOT EXISTS ClanHasBan (" +
+                              "Clan             TEXT, " +
+                              "Username         TEXT, " +
+                              "UNIQUE(Clan, Username) ON CONFLICT REPLACE, " +
+                              "FOREIGN KEY(Clan) REFERENCES Clans(Clan) ON DELETE CASCADE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanHasPermission (" +
                               "Clan             TEXT, " +
                               "Permission       TEXT, " +
@@ -147,6 +152,15 @@ namespace Clans.Database
                             IsPrivate = isPrivate
                         };
                         using (var reader2 =
+                            _connection.QueryReader("SELECT Username FROM ClanHasBan WHERE Clan = @0", name))
+                        {
+                            while (reader2.Read())
+                            {
+                                var username = reader2.Get<string>("Username");
+                                clan.BannedUsers.Add(username);
+                            }
+                        }
+                        using (var reader2 =
                             _connection.QueryReader("SELECT Permission FROM ClanHasPermission WHERE Clan = @0", name))
                         {
                             while (reader2.Read())
@@ -217,6 +231,7 @@ namespace Clans.Database
             _connection.Query(
                 "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, IsFriendlyFire = @3, IsPrivate = @4 WHERE Clan = @5",
                 clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0, clan.IsPrivate ? 1 : 0, clan.Name);
+            _connection.Query("DELETE FROM ClanHasBan WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanHasPermission WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRanks WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRankHasPermission WHERE Clan = @0", clan.Name);
@@ -226,6 +241,18 @@ namespace Clans.Database
                 using (var transaction = dbConnection.BeginTransaction())
                 {
                     using (var command = (SqliteCommand) dbConnection.CreateCommand())
+                    {
+                        command.CommandText = "INSERT INTO ClanHasBan (Clan, Username) VALUES (@0, @1)";
+                        command.AddParameter("@0", clan.Name);
+                        command.AddParameter("@1", null);
+
+                        foreach (var bannedUsername in clan.BannedUsers)
+                        {
+                            command.Parameters["@1"].Value = bannedUsername;
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                    using (var command = (SqliteCommand)dbConnection.CreateCommand())
                     {
                         command.CommandText = "INSERT INTO ClanHasPermission (Clan, Permission) VALUES (@0, @1)";
                         command.AddParameter("@0", clan.Name);

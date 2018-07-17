@@ -6,6 +6,12 @@
     public static class ClansPermissions
     {
         /// <summary>
+        ///     The permission required for banning players.
+        /// </summary>
+        /// <remarks>This permission applies to clan ranks only.</remarks>
+        public static readonly string BanPlayers = "clans.ranks.ban";
+
+        /// <summary>
         ///     The permission required for creating clans.
         /// </summary>
         public static readonly string CreatePermission = "clans.create";
