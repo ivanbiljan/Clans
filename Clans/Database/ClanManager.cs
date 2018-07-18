@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text.RegularExpressions;
 using JetBrains.Annotations;
+using Microsoft.Xna.Framework;
 using Mono.Data.Sqlite;
 using TShockAPI.DB;
 
@@ -31,8 +33,9 @@ namespace Clans.Database
                               "Prefix           TEXT, " +
                               "ChatColor        TEXT, " +
                               "Motd             TEXT, " +
-                              "IsFriendlyFire   INTEGER, " +
-                              "IsPrivate        INTEGER, " +
+                              "SpawnPoint       TEXT, " +
+                              "IsFriendlyFire   INTEGER DEFAULT 0, " +
+                              "IsPrivate        INTEGER DEFAULT 0, " +
                               "UNIQUE(Clan) ON CONFLICT REPLACE)");
             _connection.Query("CREATE TABLE IF NOT EXISTS ClanHasBan (" +
                               "Clan             TEXT, " +
@@ -85,10 +88,8 @@ namespace Clans.Database
             {
                 var clan = new Clan(name, owner);
                 _clans.Add(clan);
-                _connection.Query(
-                    "INSERT INTO Clans (Clan, Owner, Prefix, ChatColor, Motd, IsFriendlyFire, IsPrivate) VALUES (@0, @1, @2, @3, @4, @5, @6)",
-                    clan.Name, clan.Owner, clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0,
-                    clan.IsPrivate ? 1 : 0);
+                _connection.Query("INSERT INTO Clans (Clan, Owner, Prefix, ChatColor) VALUES (@0, @1, @2, @3)",
+                    clan.Name, clan.Owner, clan.Prefix, clan.ChatColor);
                 return clan;
             }
         }
@@ -140,6 +141,9 @@ namespace Clans.Database
                         var prefix = reader.Get<string>("Prefix");
                         var chatColor = reader.Get<string>("ChatColor");
                         var motd = reader.Get<string>("Motd");
+                        var spawnPointCoordinates = reader.Get<string>("SpawnPoint");
+                        var splitCoordinates =
+                            Regex.Split(Regex.Replace(spawnPointCoordinates, @"[{|}|X|:]", string.Empty), ",Y");
                         var isFriendlyFire = reader.Get<int>("IsFriendlyFire") == 1;
                         var isPrivate = reader.Get<int>("IsPrivate") == 1;
 
@@ -148,6 +152,9 @@ namespace Clans.Database
                             Prefix = prefix,
                             ChatColor = chatColor,
                             Motd = motd,
+                            BaseCoordinates = string.IsNullOrWhiteSpace(spawnPointCoordinates)
+                                ? (Vector2?) null
+                                : new Vector2(float.Parse(splitCoordinates[0]), float.Parse(splitCoordinates[1])),
                             IsFriendlyFire = isFriendlyFire,
                             IsPrivate = isPrivate
                         };
@@ -229,8 +236,9 @@ namespace Clans.Database
             }
 
             _connection.Query(
-                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, IsFriendlyFire = @3, IsPrivate = @4 WHERE Clan = @5",
-                clan.Prefix, clan.ChatColor, clan.Motd, clan.IsFriendlyFire ? 1 : 0, clan.IsPrivate ? 1 : 0, clan.Name);
+                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, SpawnPoint = @3 IsFriendlyFire = @4, IsPrivate = @5 WHERE Clan = @6",
+                clan.Prefix, clan.ChatColor, clan.Motd, clan.BaseCoordinates?.ToString(), clan.IsFriendlyFire ? 1 : 0,
+                clan.IsPrivate ? 1 : 0, clan.Name);
             _connection.Query("DELETE FROM ClanHasBan WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanHasPermission WHERE Clan = @0", clan.Name);
             _connection.Query("DELETE FROM ClanRanks WHERE Clan = @0", clan.Name);
@@ -252,7 +260,7 @@ namespace Clans.Database
                             command.ExecuteNonQuery();
                         }
                     }
-                    using (var command = (SqliteCommand)dbConnection.CreateCommand())
+                    using (var command = (SqliteCommand) dbConnection.CreateCommand())
                     {
                         command.CommandText = "INSERT INTO ClanHasPermission (Clan, Permission) VALUES (@0, @1)";
                         command.AddParameter("@0", clan.Name);

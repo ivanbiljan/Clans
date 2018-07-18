@@ -11,7 +11,7 @@ namespace Clans
         /// <summary>
         ///     Gets a value indicating whether clan colors will be displayed in game chat.
         /// </summary>
-        public bool ChatColorsEnabled { get; } = true;
+        public bool ChatColorsEnabled { get; set; } = true;
 
         /// <summary>
         ///     Gets the in-game chat format.

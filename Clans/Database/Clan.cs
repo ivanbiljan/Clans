@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Clans.Extensions;
 using JetBrains.Annotations;
+using Microsoft.Xna.Framework;
 using TShockAPI;
 
 namespace Clans.Database
@@ -27,6 +28,11 @@ namespace Clans.Database
         ///     Gets the list of banned users.
         /// </summary>
         public IList<string> BannedUsers { get; } = new List<string>();
+
+        /// <summary>
+        ///     Gets or sets the clan's base coordinates.
+        /// </summary>
+        public Vector2? BaseCoordinates { get; set; }
 
         /// <summary>
         ///     Gets or sets the chat color.

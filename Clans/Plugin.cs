@@ -191,7 +191,7 @@ namespace Clans
                 player.SendErrorMessage("You are not in a clan!");
                 return;
             }
-            if (!playerMetadata.Rank.HasPermission(ClansPermissions.SendClanMessages))
+            if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionSendClanMessages))
             {
                 player.SendErrorMessage("You do not have permission to use the clan chat!");
                 return;
@@ -256,7 +256,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.BanPlayers))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionBanPlayers))
                     {
                         player.SendErrorMessage("You do not have permission to ban players!");
                         return;
@@ -290,7 +290,7 @@ namespace Clans
                     var targetPlayer = TShock.Players.Single(p => p?.User?.Name == players[0].Name);
                     var targetMetadata = targetPlayer?.GetData<PlayerMetadata>(DataKey);
                     if (targetMetadata?.Clan.Name == playerMetadata.Clan.Name &&
-                        targetMetadata.Rank.HasPermission(ClansPermissions.ImmuneToKick))
+                        targetMetadata.Rank.HasPermission(ClansPermissions.RankPermissionImmuneToKick))
                     {
                         player.SendErrorMessage("You cannot ban this player!");
                         return;
@@ -310,7 +310,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.SetClanChatColor))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionSetClanChatColor))
                     {
                         player.SendErrorMessage("You do not have permission to change the clan's chat color.");
                         return;
@@ -342,7 +342,7 @@ namespace Clans
                         player.SendErrorMessage("You must be logged in to do that.");
                         return;
                     }
-                    if (!player.HasPermission(ClansPermissions.CreatePermission))
+                    if (!player.HasPermission(ClansPermissions.PluginPermissionCreatePermission))
                     {
                         player.SendErrorMessage("You do not have permission to create clans.");
                         return;
@@ -444,7 +444,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.ToggleFriendlyFire))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionToggleFriendlyFire))
                     {
                         player.SendErrorMessage(
                             "You do not have permission to change the clan's friendly fire status!");
@@ -499,7 +499,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.InvitePlayers))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionInvitePlayers))
                     {
                         player.SendErrorMessage("You do not have permission to invite players.");
                         return;
@@ -607,7 +607,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.KickMembers))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionKickMembers))
                     {
                         player.SendErrorMessage("You do not have permission to kick members!");
                         return;
@@ -640,7 +640,7 @@ namespace Clans
                         player.SendErrorMessage("This player is not in your clan!");
                         return;
                     }
-                    if (userMetadata.Rank.HasPermission(ClansPermissions.ImmuneToKick))
+                    if (userMetadata.Rank.HasPermission(ClansPermissions.RankPermissionImmuneToKick))
                     {
                         player.SendErrorMessage("You cannot kick this player!");
                         return;
@@ -716,7 +716,7 @@ namespace Clans
                     }
                     else
                     {
-                        if (!playerMetadata.Rank.HasPermission(ClansPermissions.SetClanMotd))
+                        if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionSetClanMotd))
                         {
                             player.SendErrorMessage(
                                 "You do not have permission to change the clan's message of the day!");
@@ -738,7 +738,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.SetClanPrefix))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionSetClanPrefix))
                     {
                         player.SendErrorMessage("You do not have permission to change the clan's prefix.");
                         return;
@@ -771,7 +771,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.TogglePrivateStatus))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionTogglePrivateStatus))
                     {
                         player.SendErrorMessage("You do not have permission to change the clan's private flag!");
                         return;
@@ -782,6 +782,24 @@ namespace Clans
                         $"The clan is {(playerMetadata.Clan.IsPrivate ? "now" : "no longer")} private.");
                 }
                     break;
+                case "setbase":
+                {
+                    if (playerMetadata == null)
+                    {
+                        player.SendErrorMessage("You are not in a clan!");
+                        return;
+                    }
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionSetClanBase))
+                    {
+                        player.SendErrorMessage("You do not have permission to change the clan's base spawn point!");
+                        return;
+                    }
+
+                    playerMetadata.Clan.BaseCoordinates = player.TPlayer.position;
+                    _clanManager.Update(playerMetadata.Clan);
+                    player.SendInfoMessage("Clan spawn point has been set to your position.");
+                }
+                    break;
                 case "setrank":
                 {
                     if (playerMetadata == null)
@@ -789,7 +807,7 @@ namespace Clans
                         player.SendErrorMessage("You are not in a clan!");
                         return;
                     }
-                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.SetMemberRank))
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionSetMemberRank))
                     {
                         player.SendErrorMessage("You do not have permission to modify ranks!");
                         return;
@@ -833,6 +851,78 @@ namespace Clans
                     userMetadata.Rank = rank;
                     _memberManager.Update(user.Name, rank.Name);
                     player.SendInfoMessage($"Set {user.Name}'s rank to '{rank.Name}'.");
+                }
+                    break;
+                case "tp":
+                case "teleport":
+                {
+                    if (!player.HasPermission(ClansPermissions.PluginPermissionClanTeleport))
+                    {
+                        player.SendErrorMessage("You do not have access to this command.");
+                        return;
+                    }
+                    if (playerMetadata == null)
+                    {
+                        player.SendErrorMessage("You are not in a clan!");
+                        return;
+                    }
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionClanTeleport))
+                    {
+                        player.SendErrorMessage("You do not have permission to teleport to the clan's base.");
+                        return;
+                    }
+                    if (playerMetadata.Clan.BaseCoordinates == null)
+                    {
+                        player.SendErrorMessage("Your clan does not have a base set.");
+                        return;
+                    }
+
+                    var location = playerMetadata.Clan.BaseCoordinates.Value.ToTileCoordinates();
+                    player.Teleport(location.X, location.Y);
+                    player.SendInfoMessage("You have been teleported to your clan's base spawn point.");
+                }
+                    break;
+                case "unban":
+                {
+                    if (playerMetadata == null)
+                    {
+                        player.SendErrorMessage("You are not in a clan!");
+                        return;
+                    }
+                    if (!playerMetadata.Rank.HasPermission(ClansPermissions.RankPermissionBanPlayers))
+                    {
+                        player.SendErrorMessage("You do not have permission to ban players!");
+                        return;
+                    }
+                    if (parameters.Count < 2)
+                    {
+                        player.SendErrorMessage(
+                            $"Invalid syntax! Proper syntax: {TShock.Config.CommandSpecifier}clan unban <player name>");
+                        return;
+                    }
+
+                    parameters.RemoveAt(0);
+                    var username = string.Join(" ", parameters);
+                    var players = TShock.Users.GetUsersByName(username);
+                    if (players.Count == 0)
+                    {
+                        player.SendErrorMessage($"Invalid player '{username}'.");
+                        return;
+                    }
+                    if (players.Count > 1)
+                    {
+                        TShock.Utils.SendMultipleMatchError(player, players.Select(p => p.Name));
+                        return;
+                    }
+                    if (!playerMetadata.Clan.BannedUsers.Contains(players[0].Name))
+                    {
+                        player.SendInfoMessage($"Player '{players[0].Name}' is not banned.");
+                        return;
+                    }
+
+                    playerMetadata.Clan.BannedUsers.Remove(players[0].Name);
+                    _clanManager.Update(playerMetadata.Clan);
+                    player.SendInfoMessage($"{players[0].Name} is no longer banned from the clan.");
                 }
                     break;
                 case "quit":
