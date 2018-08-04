@@ -47,27 +47,22 @@ namespace Clans.Commands
                 where !type.IsAbstract
                 select type;
             foreach (var type in commandTypes)
+            foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic))
             {
-                foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic))
-                {
-                    var commandAttribute = method.GetCustomAttribute<CommandAttribute>();
-                    if (commandAttribute == null)
+                var commandAttribute = method.GetCustomAttribute<CommandAttribute>();
+                if (commandAttribute == null) continue;
+
+                var commandDelegate =
+                    (CommandDelegate) Delegate.CreateDelegate(typeof(CommandDelegate), _plugin, method);
+                var command =
+                    new Command(new List<string> {commandAttribute.Permission}, commandDelegate,
+                        commandAttribute.Names)
                     {
-                        continue;
-                    }
+                        HelpText = commandAttribute.Description
+                    };
 
-                    var commandDelegate =
-                        (CommandDelegate) Delegate.CreateDelegate(typeof(CommandDelegate), _plugin, method);
-                    var command =
-                        new Command(new List<string> {commandAttribute.Permission}, commandDelegate,
-                            commandAttribute.Names)
-                        {
-                            HelpText = commandAttribute.Description
-                        };
-
-                    _commands.Add(command);
-                    TShockAPI.Commands.ChatCommands.Add(command);
-                }
+                _commands.Add(command);
+                TShockAPI.Commands.ChatCommands.Add(command);
             }
         }
     }

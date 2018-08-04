@@ -73,20 +73,15 @@ namespace Clans.Database
         /// <param name="name">The clan's name, which must not be <c>null</c>.</param>
         /// <param name="owner">The clan's owner, which must not be <c>null</c>.</param>
         /// <returns>The clan.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="name" /> or <paramref name="owner" /> is null.</exception>
         public Clan Add([NotNull] string name, [NotNull] string owner)
         {
-            if (name == null)
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
-            if (owner == null)
-            {
-                throw new ArgumentNullException(nameof(owner));
-            }
+            if (name == null) throw new ArgumentNullException(nameof(name));
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
 
             lock (_syncLock)
             {
-                var clan = new Clan(name, owner);
+                var clan = new Clan(name, owner) {Prefix = name};
                 _clans.Add(clan);
                 _connection.Query("INSERT INTO Clans (Clan, Owner, Prefix, ChatColor) VALUES (@0, @1, @2, @3)",
                     clan.Name, clan.Owner, clan.Prefix, clan.ChatColor);
@@ -99,12 +94,10 @@ namespace Clans.Database
         /// </summary>
         /// <param name="clanName">The clan's name, which must not be <c>null</c>.</param>
         /// <returns>The clan, or <c>null</c> if no match is found.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="clanName" /> is null.</exception>
         public Clan Get([NotNull] string clanName)
         {
-            if (clanName == null)
-            {
-                throw new ArgumentNullException(nameof(clanName));
-            }
+            if (clanName == null) throw new ArgumentNullException(nameof(clanName));
 
             lock (_syncLock)
             {
@@ -143,7 +136,8 @@ namespace Clans.Database
                         var motd = reader.Get<string>("Motd");
                         var spawnPointCoordinates = reader.Get<string>("SpawnPoint");
                         var splitCoordinates =
-                            Regex.Split(Regex.Replace(spawnPointCoordinates, @"[{|}|X|:]", string.Empty), ",Y");
+                            Regex.Split(
+                                Regex.Replace(spawnPointCoordinates ?? string.Empty, @"[{|}|X|:]", string.Empty), "Y");
                         var isFriendlyFire = reader.Get<int>("IsFriendlyFire") == 1;
                         var isPrivate = reader.Get<int>("IsPrivate") == 1;
 
@@ -167,6 +161,7 @@ namespace Clans.Database
                                 clan.BannedUsers.Add(username);
                             }
                         }
+
                         using (var reader2 =
                             _connection.QueryReader("SELECT Permission FROM ClanHasPermission WHERE Clan = @0", name))
                         {
@@ -176,6 +171,7 @@ namespace Clans.Database
                                 clan.Permissions.Add(permission);
                             }
                         }
+
                         using (var reader2 =
                             _connection.QueryReader("SELECT Rank, Tag FROM ClanRanks WHERE Clan = @0", name))
                         {
@@ -186,7 +182,7 @@ namespace Clans.Database
                                 var clanRank = new ClanRank(rank, tag);
 
                                 using (var reader3 = _connection.QueryReader(
-                                    "SELECT Permission FROM ClanRankHasPermission WHERE Clan = @0 AND Rank = @1", clan,
+                                    "SELECT Permission FROM ClanRankHasPermission WHERE Clan = @0 AND Rank = @1", name,
                                     rank))
                                 {
                                     while (reader3.Read())
@@ -206,16 +202,15 @@ namespace Clans.Database
             }
         }
 
+
         /// <summary>
         ///     Removes a clan.
         /// </summary>
         /// <param name="name">The clan's name, which must not be <c>null</c>.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="name" /> is null.</exception>
         public void Remove([NotNull] string name)
         {
-            if (name == null)
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
+            if (name == null) throw new ArgumentNullException(nameof(name));
 
             lock (_syncLock)
             {
@@ -228,15 +223,13 @@ namespace Clans.Database
         ///     Updates a clan.
         /// </summary>
         /// <param name="clan">The clan, which must not be <c>null</c>.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="clan" /> is null.</exception>
         public void Update([NotNull] Clan clan)
         {
-            if (clan == null)
-            {
-                throw new ArgumentNullException(nameof(clan));
-            }
+            if (clan == null) throw new ArgumentNullException(nameof(clan));
 
             _connection.Query(
-                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, SpawnPoint = @3 IsFriendlyFire = @4, IsPrivate = @5 WHERE Clan = @6",
+                "UPDATE Clans SET Prefix = @0, ChatColor = @1, Motd = @2, SpawnPoint = @3, IsFriendlyFire = @4, IsPrivate = @5 WHERE Clan = @6",
                 clan.Prefix, clan.ChatColor, clan.Motd, clan.BaseCoordinates?.ToString(), clan.IsFriendlyFire ? 1 : 0,
                 clan.IsPrivate ? 1 : 0, clan.Name);
             _connection.Query("DELETE FROM ClanHasBan WHERE Clan = @0", clan.Name);
@@ -260,6 +253,7 @@ namespace Clans.Database
                             command.ExecuteNonQuery();
                         }
                     }
+
                     using (var command = (SqliteCommand) dbConnection.CreateCommand())
                     {
                         command.CommandText = "INSERT INTO ClanHasPermission (Clan, Permission) VALUES (@0, @1)";

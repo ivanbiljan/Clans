@@ -15,28 +15,18 @@ namespace Clans.Extensions
         /// <returns>The corresponding color.</returns>
         public static Color GetColor(this string source)
         {
-            if (source == null)
-            {
-                return new Color(255, 255, 255);
-            }
+            if (source == null) return new Color(255, 255, 255);
 
             var array = source.Split(',');
-            if (array.Length != 3)
-            {
-                throw new ArgumentException("Expected rrr,ggg,bbb format.", nameof(source));
-            }
+            if (array.Length != 3) throw new ArgumentException("Expected rrr,ggg,bbb format.", nameof(source));
             if (!byte.TryParse(array[0], out var r))
-            {
                 throw new ArgumentException("The color provided was not in the correct format.", nameof(source));
-            }
+
             if (!byte.TryParse(array[1], out var g))
-            {
                 throw new ArgumentException("The color provided was not in the correct format.", nameof(source));
-            }
+
             if (!byte.TryParse(array[2], out var b))
-            {
                 throw new ArgumentException("The color provided was not in the correct format.", nameof(source));
-            }
 
             return new Color(r, g, b);
         }

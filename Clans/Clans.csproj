@@ -75,7 +75,9 @@
     <Compile Include="Database\ClanRank.cs" />
     <Compile Include="Database\MemberManager.cs" />
     <Compile Include="Database\PlayerMetadata.cs" />
+    <Compile Include="Extensions\Dictionary.Extensions.cs" />
     <Compile Include="Extensions\String.Extensions.cs" />
+    <Compile Include="Extensions\TSPlayer.Extensions.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

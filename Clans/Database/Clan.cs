@@ -64,7 +64,7 @@ namespace Clans.Database
         ///     Gets or sets the name.
         /// </summary>
         [NotNull]
-        public string Name { get; set; }
+        public string Name { get; }
 
         /// <summary>
         ///     Gets the owner.

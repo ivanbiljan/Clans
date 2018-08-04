@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using Clans.Extensions;
 using JetBrains.Annotations;
 using TShockAPI.DB;
 
@@ -32,7 +33,7 @@ namespace Clans.Database
                               "Clan         TEXT, " +
                               "Rank         TEXT, " +
                               "Username     TEXT, " +
-                              "UNIQUE(Username) ON CONFLICT REPLACE, " +
+                              "UNIQUE(Clan, Username) ON CONFLICT REPLACE, " +
                               "FOREIGN KEY(Clan) REFERENCES Clans(Clan) ON DELETE CASCADE)");
         }
 
@@ -54,18 +55,11 @@ namespace Clans.Database
         /// <returns>The metadata.</returns>
         public PlayerMetadata Add([NotNull] Clan clan, [NotNull] ClanRank rank, [NotNull] string username)
         {
-            if (clan == null)
-            {
-                throw new ArgumentNullException(nameof(clan));
-            }
-            if (rank == null)
-            {
-                throw new ArgumentNullException(nameof(rank));
-            }
-            if (username == null)
-            {
-                throw new ArgumentNullException(nameof(username));
-            }
+            if (clan == null) throw new ArgumentNullException(nameof(clan));
+
+            if (rank == null) throw new ArgumentNullException(nameof(rank));
+
+            if (username == null) throw new ArgumentNullException(nameof(username));
 
             lock (_syncLock)
             {
@@ -86,10 +80,7 @@ namespace Clans.Database
         /// <returns>The player metadata, or <c>null</c> if no match is found.</returns>
         public PlayerMetadata Get([NotNull] string username)
         {
-            if (username == null)
-            {
-                throw new ArgumentNullException(nameof(username));
-            }
+            if (username == null) throw new ArgumentNullException(nameof(username));
 
             lock (_syncLock)
             {
@@ -117,9 +108,7 @@ namespace Clans.Database
 
                         var clan = _clanManager.Get(clanName);
                         if (clan == null) // Should never happen
-                        {
                             continue;
-                        }
 
                         var rank = clan.Owner == username
                             ? ClanRank.OwnerRank
@@ -137,13 +126,11 @@ namespace Clans.Database
         /// <param name="username">The player's username, which must not be <c>null</c>.</param>
         public void Remove([NotNull] string username)
         {
-            if (username == null)
-            {
-                throw new ArgumentNullException(nameof(username));
-            }
+            if (username == null) throw new ArgumentNullException(nameof(username));
 
             lock (_syncLock)
             {
+                _metadataCache.GetValueOrDefault(username)?.Clan.Members.Remove(username);
                 _metadataCache.Remove(username);
                 _connection.Query("DELETE FROM ClanMembers WHERE Username = @0", username);
             }
@@ -156,14 +143,9 @@ namespace Clans.Database
         /// <param name="rankName">The rank name, which must not be <c>null</c>.</param>
         public void Update([NotNull] string username, [NotNull] string rankName)
         {
-            if (username == null)
-            {
-                throw new ArgumentNullException(nameof(username));
-            }
-            if (rankName == null)
-            {
-                throw new ArgumentNullException(nameof(rankName));
-            }
+            if (username == null) throw new ArgumentNullException(nameof(username));
+
+            if (rankName == null) throw new ArgumentNullException(nameof(rankName));
 
             _connection.Query("UPDATE ClanMembers SET Rank = @0 WHERE Username = @1", rankName, username);
         }

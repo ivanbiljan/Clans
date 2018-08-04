@@ -1,11 +1,11 @@
-﻿using System.IO;
-using Newtonsoft.Json;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Clans
 {
     /// <summary>
     ///     Represents the Clans plugin configuration file.
     /// </summary>
+    [SuppressMessage("ReSharper", "AutoPropertyCanBeMadeGetOnly.Global")]
     public sealed class ClansConfig
     {
         /// <summary>

@@ -12,7 +12,7 @@ namespace Clans.Database
         /// <summary>
         ///     Gets the default clan rank.
         /// </summary>
-        public static ClanRank DefaultRank = new ClanRank("Default")
+        public static readonly ClanRank DefaultRank = new ClanRank("Default")
         {
             Permissions = {ClansPermissions.RankPermissionSendClanMessages}
         };
@@ -20,7 +20,7 @@ namespace Clans.Database
         /// <summary>
         ///     Gets the owner rank.
         /// </summary>
-        public static ClanRank OwnerRank = new ClanRank("Owner")
+        public static readonly ClanRank OwnerRank = new ClanRank("Owner")
         {
             Permissions = {"*"}
         };
@@ -33,7 +33,6 @@ namespace Clans.Database
         public ClanRank([NotNull] string name, string tag = null)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
-            Permissions = new List<string> {ClansPermissions.RankPermissionSendClanMessages};
             Tag = tag ?? name;
         }
 
@@ -41,12 +40,12 @@ namespace Clans.Database
         ///     Gets or sets the name.
         /// </summary>
         [NotNull]
-        public string Name { get; set; }
+        public string Name { get; }
 
         /// <summary>
         ///     Gets the permissions.
         /// </summary>
-        public IList<string> Permissions { get; }
+        public IList<string> Permissions { get; } = new List<string>();
 
         /// <summary>
         ///     Gets or sets the tag.
@@ -60,15 +59,9 @@ namespace Clans.Database
         /// <returns><c>true</c> if the rank has the permission; otherwise, <c>false</c>.</returns>
         public bool HasPermission(string permission)
         {
-            if (string.IsNullOrWhiteSpace(permission))
-            {
-                return true;
-            }
+            if (string.IsNullOrWhiteSpace(permission)) return true;
 
-            if (Permissions.Contains("*") || Permissions.Contains("clans.ranks.*"))
-            {
-                return true;
-            }
+            if (Permissions.Contains("*") || Permissions.Contains("clans.ranks.*")) return true;
 
             return Permissions.Contains(permission);
         }
